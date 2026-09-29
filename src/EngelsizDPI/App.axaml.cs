@@ -43,6 +43,9 @@ public partial class App : Application
             if (!Program.StartInTray) _window.Show();
 
             Program.ShowRequested += () => Dispatcher.UIThread.Post(ShowWindow);
+            Program.ExitRequested += () => Dispatcher.UIThread.Post(() => _ = ExitAsync());
+            if (Program.JustInstalled)
+                _vm.Notice = "EngelsizDPI kuruldu. Artık Başlat menüsünden ve masaüstünden açabilirsiniz; indirdiğiniz dosyayı silebilirsiniz.";
             desktop.Exit += (_, _) => _engine?.Dispose();
 
             _vm.Update.PropertyChanged += OnUpdateChanged;

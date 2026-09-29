@@ -11,15 +11,16 @@ Türkiye'de erişime kapatılan **Discord**, **Roblox** ve eklediğiniz diğer s
 - **Sistemi kirletmez:** Kalıcı bir servis kurulmaz. Uygulamayı kapattığınızda her şey eski hâline döner.
 - **Tepside çalışır:** Pencereyi kapatınca arka planda çalışmaya devam eder. İsterseniz Windows açılışında otomatik başlar.
 
-## İndirme
+## İndirme ve kurulum
 
-1. [Releases](../../releases) sayfasından en son `EngelsizDPI.exe` dosyasını indirin.
-2. Çift tıklayıp açın. Yönetici izni sorulduğunda **Evet** deyin.
-3. Ortadaki düğmeye basın.
+1. [Releases](../../releases/latest) sayfasından `EngelsizDPI.exe` dosyasını indirin.
+2. Çift tıklayın. Windows "bilgisayarınızı korudu" uyarısı gösterirse **Ek bilgi → Yine de çalıştır** deyin (uygulama imzasız olduğu için yalnızca ilk seferde çıkar). Yönetici izni sorulduğunda **Evet** deyin.
+3. Uygulama kendini `C:\Program Files\EngelsizDPI` klasörüne kurar, Başlat menüsüne ve masaüstüne kısayol ekler ve açılır. İndirdiğiniz dosyayı artık silebilirsiniz.
+4. Ortadaki düğmeye basın.
 
-Kurulum gerekmez, tek bir exe dosyasıdır.
+**Kaldırmak için:** Windows Ayarlar → Uygulamalar → Yüklü uygulamalar → EngelsizDPI → Kaldır.
 
-> **Antivirüs uyarısı:** WinDivert sürücüsü ağ paketlerini değiştirdiği için bazı antivirüsler (özellikle Kaspersky) yanlış alarm verebilir. Böyle bir durumda `C:\ProgramData\EngelsizDPI` klasörünü antivirüs istisnalarına ekleyin.
+> **Antivirüs uyarısı:** WinDivert sürücüsü ağ paketlerini değiştirdiği için bazı antivirüsler (özellikle Kaspersky) yanlış alarm verebilir. Böyle bir durumda `C:\ProgramData\EngelsizDPI` ve `C:\Program Files\EngelsizDPI` klasörlerini antivirüs istisnalarına ekleyin.
 
 ## Güncellemeler
 

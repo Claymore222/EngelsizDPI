@@ -99,6 +99,17 @@
         <TextBlock Grid.Column="2" Classes="muted" VerticalAlignment="Center" Text="{Binding AppVersion}" />
       </Grid>
 
+      <!-- Bilgi bandı (ör. kurulum tamamlandı) -->
+      <Border IsVisible="{Binding HasNotice}" Background="#10261A" BorderBrush="#1F5A36" BorderThickness="1"
+              CornerRadius="12" Padding="14,10">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Text="{Binding Notice}" TextWrapping="Wrap" FontSize="12" Foreground="#86EFAC"
+                     VerticalAlignment="Center" />
+          <Button Grid.Column="1" Classes="ghost" Margin="8,0,0,0" Content="Tamam"
+                  Command="{Binding DismissNoticeCommand}" />
+        </Grid>
+      </Border>
+
       <!-- Güncelleme bildirimi -->
       <Border IsVisible="{Binding Update.IsAvailable}" Background="#1B1D3A" BorderBrush="#3B3F8F" BorderThickness="1"
               CornerRadius="12" Padding="14,10">

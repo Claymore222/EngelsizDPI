@@ -38,6 +38,9 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _newDomain = "";
     [ObservableProperty] private string? _conflictText;
 
+    /// <summary>Kapatılabilir bilgi bandı (ör. kurulum tamamlandı).</summary>
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasNotice))] private string? _notice;
+
     public IReadOnlyList<BypassProfile> Profiles { get; } = Core.Profiles.All;
     public UpdateViewModel Update { get; }
     public ObservableCollection<PackItem> Packs { get; }
@@ -45,6 +48,7 @@ public sealed partial class MainViewModel : ObservableObject
 
     public bool IsConnected => State is ConnectionState.On or ConnectionState.Warning;
     public bool HasConflict => ConflictText is not null;
+    public bool HasNotice => Notice is not null;
     public string ToggleLabel => IsConnected ? "Bağlantıyı kes" : "Bağlan";
     public string AppVersion => "v" + UpdateService.CurrentVersion;
 
@@ -260,6 +264,9 @@ public sealed partial class MainViewModel : ObservableObject
         // Eski araç kaldırılınca motor temiz bir sürücüyle yeniden başlatılır ve siteler yeniden test edilir.
         if (wasConnected) await ConnectAsync();
     }
+
+    [RelayCommand]
+    private void DismissNotice() => Notice = null;
 
     [RelayCommand]
     private static void OpenLog()
