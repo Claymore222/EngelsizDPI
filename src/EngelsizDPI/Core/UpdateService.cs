@@ -125,6 +125,15 @@ public static class UpdateService
             }
         }
 
+        // Elle yayınlanan bir sürümde etiket (ör. v1.0.1) yükseltilip projedeki <Version> unutulursa, kurulan
+        // exe kendini yine eski sürüm sanar ve aynı güncellemeyi sonsuza kadar tekrar kurardı.
+        if (TryParseVersion(FileVersionInfo.GetVersionInfo(partial).FileVersion, out var exeVersion) && exeVersion <= CurrentVersion)
+        {
+            File.Delete(partial);
+            throw new InvalidOperationException(
+                $"Yayındaki exe'nin sürümü ({exeVersion}) etiketle ({info.Version}) uyuşmuyor; güncelleme atlandı.");
+        }
+
         File.Move(partial, target, overwrite: true);
         return target;
     }
