@@ -113,13 +113,20 @@ public static partial class Installer
             AutoStart.EnsureLauncher(InstalledExe);
             // Görev eski adla (v1.1.0) ya da kurulumdan önce indirilen exe'nin yoluyla kayıtlı olabilir.
             if (AutoStart.IsEnabled()) AutoStart.SetEnabled(true);
-            // v1.1.0 motor dosyalarını ve güncellemeleri kullanıcının yazabildiği klasörlerde tutuyordu.
-            foreach (var legacy in AppPaths.LegacyWritableDirs)
-                if (Directory.Exists(legacy)) Directory.Delete(legacy, recursive: true);
+
         }
         catch (Exception e)
         {
             Log.Write("Kurulum bilgisi tazelenemedi: " + e.Message);
+        }
+
+        // v1.1.0 motor dosyalarını ve güncellemeleri kullanıcının yazabildiği klasörlerde tutuyordu. Eski
+        // WinDivert64.sys, sürücü bellekte kaldığı için yeniden başlatmaya kadar kilitli olabilir; her klasör
+        // ayrı denenir ve silinemeyen bir sonraki açılışta tekrar denenir.
+        foreach (var legacy in AppPaths.LegacyWritableDirs.Where(Directory.Exists))
+        {
+            try { Directory.Delete(legacy, recursive: true); }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
         }
     }
 
