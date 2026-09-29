@@ -19,8 +19,9 @@
     <GitHubRepo Condition="'$(GitHubRepo)' == ''">Claymore222/EngelsizDPI</GitHubRepo>
   </PropertyGroup>
 
-  <!-- Tek dosya, kurulumsuz (portable) yayın: dotnet publish -c Release -r win-x64 -->
-  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+  <!-- Tek dosya, kurulumsuz (portable) yayın: dotnet publish -c Release -r win-x64
+       Yalnızca hedef platform (-r) verildiğinde uygulanır; aksi halde test projesi uygulamaya başvuramaz. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release' And '$(RuntimeIdentifier)' != ''">
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>

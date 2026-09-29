@@ -32,9 +32,11 @@ public static class UpdateService
     /// Yalnızca yayınlanmış tek dosyalık exe kendini değiştirebilir; `dotnet run` ile geliştirme sırasında
     /// bin klasöründeki dosyaların üzerine yazılmaz.
     /// </summary>
+#pragma warning disable IL3000 // Tek dosyalık yayında Location'ın boş olması tam olarak aradığımız işaret.
     public static bool CanSelfUpdate =>
         OperatingSystem.IsWindows() && Repo is not null && Environment.ProcessPath is not null &&
         string.IsNullOrEmpty(typeof(UpdateService).Assembly.Location);
+#pragma warning restore IL3000
 
     public static bool CanCheck => Repo is not null;
 
