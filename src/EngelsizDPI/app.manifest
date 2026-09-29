@@ -4,8 +4,9 @@
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
     <security>
       <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
-        <!-- WinDivert sürücüsü yönetici izni gerektirir. -->
-        <requestedExecutionLevel level="requireAdministrator" uiAccess="false" />
+        <!-- Normal kullanıcı olarak başlar; yönetici yetkisini UAC sormadan "EngelsizDPI\Launch" zamanlanmış
+             görevinden alır (bkz. Core/Elevation.cs). Yalnızca ilk kurulumda bir kez UAC sorulur. -->
+        <requestedExecutionLevel level="asInvoker" uiAccess="false" />
       </requestedPrivileges>
     </security>
   </trustInfo>

@@ -41,8 +41,14 @@ public static class UpdateService
     public static bool CanCheck => Repo is not null;
 
     /// <summary>İndirilmiş ve doğrulanmış güncellemeler; kullanıcıya ait klasörde tutulur.</summary>
-    public static string UpdateDir { get; internal set; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EngelsizDPI", "update");
+    /// <remarks>
+    /// Kuruluyken Program Files altında (yalnızca yönetici yazabilir): buradaki exe, sonraki açılışta yönetici
+    /// olarak kurulur; kullanıcının yazabildiği bir klasör olsaydı herhangi bir program oraya kendi exe'sini koyup
+    /// yetki kazanabilirdi.
+    /// </remarks>
+    public static string UpdateDir { get; internal set; } = OperatingSystem.IsWindows() && Installer.IsRunningInstalled
+        ? Path.Combine(Installer.InstallDir, "updates")
+        : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EngelsizDPI", "update");
 
     /// <summary>Yeni sürüm varsa bilgisini, yoksa null döner.</summary>
     public static async Task<UpdateInfo?> CheckAsync(CancellationToken ct = default)

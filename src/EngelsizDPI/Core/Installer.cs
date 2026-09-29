@@ -46,6 +46,10 @@ public static partial class Installer
     public static bool IsRunningInstalled =>
         Environment.ProcessPath is { } exe && PathsEqual(exe, InstalledExe);
 
+    /// <summary>Kurulu kopya var ve bu exe'den eski değil (yani kurulu kopyayı başlatmak yeterli).</summary>
+    public static bool IsInstalledAndCurrent() =>
+        ReadVersion(InstalledExe) is { } installed && installed >= UpdateService.CurrentVersion;
+
     /// <summary>Bu açılışta ne yapılacağına karar verir.</summary>
     public static LaunchAction Decide() => Decide(
         canInstall: UpdateService.CanSelfUpdate,
@@ -94,6 +98,7 @@ public static partial class Installer
         CreateShortcut(StartMenuShortcut);
         CreateShortcut(DesktopShortcut);
         RegisterUninstallEntry();
+        AutoStart.EnsureLauncher(InstalledExe);
         Log.Write($"Kuruldu: {InstalledExe} (v{UpdateService.CurrentVersion})");
     }
 
@@ -105,8 +110,12 @@ public static partial class Installer
         {
             RegisterUninstallEntry();
             if (!File.Exists(StartMenuShortcut)) CreateShortcut(StartMenuShortcut);
-            // Görev, kurulumdan önce indirilen exe'nin yolunu gösteriyor olabilir.
+            AutoStart.EnsureLauncher(InstalledExe);
+            // Görev eski adla (v1.1.0) ya da kurulumdan önce indirilen exe'nin yoluyla kayıtlı olabilir.
             if (AutoStart.IsEnabled()) AutoStart.SetEnabled(true);
+            // v1.1.0 motor dosyalarını ve güncellemeleri kullanıcının yazabildiği klasörlerde tutuyordu.
+            foreach (var legacy in AppPaths.LegacyWritableDirs)
+                if (Directory.Exists(legacy)) Directory.Delete(legacy, recursive: true);
         }
         catch (Exception e)
         {
@@ -118,18 +127,13 @@ public static partial class Installer
     public static void Uninstall()
     {
         Log.Write("Kaldırılıyor");
-        TryRun(() => AutoStart.SetEnabled(false));
+        TryRun(AutoStart.RemoveAll);
         TryRun(() => File.Delete(StartMenuShortcut));
         TryRun(() => File.Delete(DesktopShortcut));
         TryRun(() => Registry.LocalMachine.DeleteSubKeyTree(UninstallKeyPath, throwOnMissingSubKey: false));
 
         // Motor dosyaları, günlük, ayarlar ve indirilmiş güncellemeler.
-        foreach (var dir in new[]
-        {
-            Path.GetDirectoryName(AppPaths.EngineDir)!,
-            Path.GetDirectoryName(AppPaths.SettingsFile)!,
-            Path.GetDirectoryName(UpdateService.UpdateDir)!,
-        })
+        foreach (var dir in new[] { AppPaths.DataDir, Path.GetDirectoryName(AppPaths.SettingsFile)! }.Concat(AppPaths.LegacyWritableDirs))
         {
             TryRun(() => { if (Directory.Exists(dir)) Directory.Delete(dir, recursive: true); });
         }

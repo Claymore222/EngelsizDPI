@@ -27,6 +27,13 @@ internal static class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        // Yönetici değilsek yönetici kopyayı başlatıp çıkarız (kuruluysa UAC sorulmaz).
+        if (OperatingSystem.IsWindows() && !Elevation.IsElevated)
+        {
+            Elevation.Elevate(args);
+            return;
+        }
+
         StartInTray = args.Contains("--tray");
         ForceConnect = args.Contains("--connect");
         JustInstalled = args.Contains("--installed");

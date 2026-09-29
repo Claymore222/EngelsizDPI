@@ -14,7 +14,7 @@ Türkiye'de erişime kapatılan **Discord**, **Roblox** ve eklediğiniz diğer s
 ## İndirme ve kurulum
 
 1. [Releases](../../releases/latest) sayfasından `EngelsizDPI.exe` dosyasını indirin.
-2. Çift tıklayın. Windows "bilgisayarınızı korudu" uyarısı gösterirse **Ek bilgi → Yine de çalıştır** deyin (uygulama imzasız olduğu için yalnızca ilk seferde çıkar). Yönetici izni sorulduğunda **Evet** deyin.
+2. Çift tıklayın. Windows "bilgisayarınızı korudu" uyarısı gösterirse **Ek bilgi → Yine de çalıştır** deyin (uygulama imzasız olduğu için yalnızca ilk seferde çıkar). Yönetici izni sorulduğunda **Evet** deyin. Bu izin yalnızca ilk kurulumda bir kez sorulur; sonraki açılışlarda ve Windows açılışında uygulama izin istemeden başlar.
 3. Uygulama kendini `C:\Program Files\EngelsizDPI` klasörüne kurar, Başlat menüsüne ve masaüstüne kısayol ekler ve açılır. İndirdiğiniz dosyayı artık silebilirsiniz.
 4. Ortadaki düğmeye basın.
 

@@ -74,9 +74,25 @@ public static class AppPaths
     public static string SettingsFile { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "EngelsizDPI", "settings.json");
 
-    /// <summary>Motor dosyaları; servis/sürücü yolu kullanıcıdan bağımsız olsun diye ProgramData'da.</summary>
-    public static string EngineDir { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "EngelsizDPI", "engine");
+    /// <summary>Günlük gibi paylaşılan veriler (C:\ProgramData\EngelsizDPI).</summary>
+    public static string DataDir { get; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "EngelsizDPI");
+
+    /// <summary>
+    /// Yönetici olarak çalıştırılan motor dosyaları. Kuruluyken yalnızca yöneticilerin yazabildiği Program Files
+    /// altında durur: uygulama UAC sormadan yönetici olarak başlayabildiği için, sıradan bir sürecin
+    /// değiştirebileceği bir klasörden exe/dll çalıştırmak yetki yükseltme açığı olurdu.
+    /// </summary>
+    public static string EngineDir { get; } = OperatingSystem.IsWindows() && Installer.IsRunningInstalled
+        ? Path.Combine(Installer.InstallDir, "engine")
+        : Path.Combine(DataDir, "engine");
+
+    /// <summary>v1.1.0'ın kullanıcının yazabildiği yerlerde bıraktığı ve artık kullanılmayan klasörler.</summary>
+    public static IEnumerable<string> LegacyWritableDirs =>
+    [
+        Path.Combine(DataDir, "engine"),
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "EngelsizDPI"),
+    ];
 
     public static string HostListFile => Path.Combine(EngineDir, "hosts.txt");
 }
