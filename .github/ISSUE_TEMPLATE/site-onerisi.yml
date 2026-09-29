@@ -1,0 +1,37 @@
+name: Site önerisi
+description: Engelli bir sitenin herkes için listeye eklenmesini önerin
+title: "Site önerisi: "
+labels: ["site-önerisi"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        EngelsizDPI'daki **"Herkese öner"** düğmesi bu formu sizin için doldurur. Elle dolduruyorsanız
+        alan adlarını `https://` ve `www.` olmadan, her satıra bir tane yazın.
+  - type: input
+    id: site
+    attributes:
+      label: Site
+      placeholder: reddit.com
+    validations:
+      required: true
+  - type: textarea
+    id: domains
+    attributes:
+      label: Alan adları
+      description: Sitenin kullandığı ve engelli görünen tüm alan adları (her satıra bir tane).
+      placeholder: |
+        reddit.com
+        redd.it
+        redditstatic.com
+    validations:
+      required: true
+  - type: input
+    id: isp
+    attributes:
+      label: İnternet sağlayıcınız (isteğe bağlı)
+      placeholder: Türk Telekom, Superonline, Vodafone…
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notlar (isteğe bağlı)

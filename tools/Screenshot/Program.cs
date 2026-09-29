@@ -14,20 +14,41 @@ AppBuilder.Configure<App>()
     .WithInterFont()
     .SetupWithoutStarting();
 
-void Shot(string name, Action<MainViewModel> setup)
+void Shot(string name, Action<MainViewModel> setup, int height = 1180)
 {
-    var vm = new MainViewModel(null, new AppSettings { CustomDomains = ["reddit.com"] });
+    var vm = new MainViewModel(null, new AppSettings { DisabledPacks = [], CustomDomains = ["reddit.com"] });
     setup(vm);
-    var w = new MainWindow { DataContext = vm, Width = 400, Height = 900 };
+    var w = new MainWindow { DataContext = vm, Width = 460, Height = height };
     w.Show();
     Dispatcher.UIThread.RunJobs();
     AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-    using (var fs = File.Create(Path.Combine(outDir, name + ".png"))) w.CaptureRenderedFrame()!.Save(fs);
-    w.AllowClose = true; w.Close();
+    using (var fs = File.Create(Path.Combine(outDir, name + ".png")))
+#pragma warning disable CS0618 // Geliştirme aracı; PNG varsayılanı yeterli.
+        w.CaptureRenderedFrame()!.Save(fs);
+#pragma warning restore CS0618
+    w.AllowClose = true;
+    w.Close();
 }
 
-Shot("off", vm => { vm.State = ConnectionState.Off; vm.StatusText = "Bağlı değil"; vm.StatusDetail = "Başlamak için düğmeye dokunun"; });
-Shot("on", vm => { vm.State = ConnectionState.On; vm.StatusText = "Aktif"; vm.StatusDetail = "Standart · tüm siteler erişilebilir"; foreach (var p in vm.Packs) p.Reachable = true; });
-Shot("warn", vm => { vm.State = ConnectionState.Warning; vm.StatusText = "Kısmen aktif"; vm.StatusDetail = "Roblox açılmadı. \"Otomatik bul\"u deneyin."; vm.Packs[0].Reachable = true; vm.Packs[1].Reachable = false; vm.ConflictText = "Eski bir GoodbyeDPI servisi kurulu (GoodbyeDPI-Turkey veya DNSChanger)."; });
-Shot("update", vm => { vm.State = ConnectionState.On; vm.StatusText = "Aktif"; vm.StatusDetail = "Standart · tüm siteler erişilebilir"; vm.Update.IsAvailable = true; vm.Update.IsDownloading = true; vm.Update.Progress = 45; vm.Update.BannerText = "Yeni sürüm hazır: v1.1.0"; });
-Shot("installed", vm => { vm.State = ConnectionState.Off; vm.StatusText = "Bağlı değil"; vm.StatusDetail = "Başlamak için düğmeye dokunun"; vm.Notice = "EngelsizDPI kuruldu. Artık Başlat menüsünden ve masaüstünden açabilirsiniz; indirdiğiniz dosyayı silebilirsiniz."; });
+void Set(MainViewModel vm, ConnectionState state, string text, string detail, params PackStatus[] statuses)
+{
+    vm.State = state;
+    vm.StatusText = text;
+    vm.StatusDetail = detail;
+    for (var i = 0; i < statuses.Length && i < vm.Packs.Count; i++) vm.Packs[i].Status = statuses[i];
+}
+
+Shot("on", vm => Set(vm, ConnectionState.On, "Bağlı", "Standart yöntem · 3 site açık", PackStatus.Open, PackStatus.Open, PackStatus.None, PackStatus.Open));
+Shot("off", vm => Set(vm, ConnectionState.Off, "Bağlı değil", "Başlatmak için anahtarı açın"));
+Shot("busy", vm => { Set(vm, ConnectionState.Busy, "Bağlanıyor…", "Siteler test ediliyor", PackStatus.Testing, PackStatus.Testing, PackStatus.None, PackStatus.Testing); vm.IsBusy = true; });
+Shot("error", vm => { Set(vm, ConnectionState.Error, "Bağlanamadı", "WinDivert sürücüsü engellendi. Antivirüs WinDivert'i engelliyor olabilir. (hata kodu 1275)"); vm.ConflictText = "Eski bir GoodbyeDPI servisi kurulu (GoodbyeDPI-Turkey veya DNSChanger)."; });
+Shot("add", vm =>
+{
+    Set(vm, ConnectionState.On, "Bağlı", "Standart yöntem · 3 site açık", PackStatus.Open, PackStatus.Open, PackStatus.None, PackStatus.Open);
+    vm.IsAddOpen = true;
+    vm.LastAddedDomain = "reddit.com";
+    vm.AddMessage = "reddit.com şu adresleri de kullanıyor ve engelli görünüyor:";
+    vm.ScanResults.Add(new ScanSuggestion("redd.it"));
+    vm.ScanResults.Add(new ScanSuggestion("redditstatic.com"));
+    vm.Notice = "EngelsizDPI kuruldu. Artık Başlat menüsünden ve masaüstünden açabilirsiniz; indirdiğiniz dosyayı silebilirsiniz.";
+}, 1400);

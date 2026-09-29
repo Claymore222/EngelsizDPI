@@ -22,6 +22,24 @@ Türkiye'de erişime kapatılan **Discord**, **Roblox** ve eklediğiniz diğer s
 
 > **Antivirüs uyarısı:** WinDivert sürücüsü ağ paketlerini değiştirdiği için bazı antivirüsler (özellikle Kaspersky) yanlış alarm verebilir. Böyle bir durumda `C:\ProgramData\EngelsizDPI` ve `C:\Program Files\EngelsizDPI` klasörlerini antivirüs istisnalarına ekleyin.
 
+## Siteler
+
+Uygulamadaki hazır site listesi bu depodaki [`packs/packs.json`](packs/packs.json) dosyasından gelir ve uygulama güncellenmeden, birkaç saat içinde herkese ulaşır. GitHub'a erişilemezse jsDelivr üzerinden, o da olmazsa uygulamanın içindeki yedek listeden okunur.
+
+**Kendi siteniz için:** Uygulamada *Site ekle veya tara*'ya basıp alan adını yazın. Bağlıyken EngelsizDPI o sitenin kullandığı diğer adresleri (resim ve dosya sunucuları) tarar, engelli görünenleri size önerir.
+
+**Herkes için önermek:** Siteyi ekledikten sonra *Herkese öner*'e basın. GitHub'da içi doldurulmuş bir [öneri formu](../../issues/new?template=site-onerisi.yml) açılır. Onaylanan siteler `packs.json`'a eklenir.
+
+`packs.json` biçimi:
+
+```json
+{ "id": "discord", "name": "Discord", "category": "Sohbet", "default": true,
+  "test": "https://discord.com/api/v9/gateway",
+  "domains": ["discord.com", "discord.gg", "discordapp.com"] }
+```
+
+Listeyi değiştirdiğinizde en üstteki `revision` sayısını bir artırın; uygulamalar yalnızca daha yeni revizyonu indirir. Alan adları alt alan adlarını da kapsar (`discord.com` → `cdn.discord.com`).
+
 ## Güncellemeler
 
 EngelsizDPI kendini günceller, yeni exe indirmeniz gerekmez. Uygulama açıldıktan kısa süre sonra ve ardından 6 saatte bir GitHub Releases'e bakar. Yeni sürüm varsa arka planda indirir ve SHA-256 ile doğrular. Kurulum iki durumda yapılır:

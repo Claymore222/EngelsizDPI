@@ -9,15 +9,33 @@ namespace EngelsizDPI.ViewModels;
 
 public enum ConnectionState { Off, Busy, On, Warning, Error }
 
-public sealed partial class PackItem(SitePack pack, bool enabled) : ObservableObject
+public enum PackStatus { None, Testing, Open, Blocked }
+
+public sealed partial class PackItem(SitePack pack, bool enabled, bool isCustom = false) : ObservableObject
 {
     public SitePack Pack { get; } = pack;
+    public bool IsCustom { get; } = isCustom;
     public string Name => Pack.Name;
+    public string Initial => Pack.Name[..1].ToUpperInvariant();
+    public string Subtitle => IsCustom ? "Özel site" : $"{Pack.Category} · {Pack.Domains.Count} alan adı";
 
     [ObservableProperty] private bool _enabled = enabled;
+    [ObservableProperty] private PackStatus _status;
 
-    /// <summary>Son bağlantı testinin sonucu; test yapılmadıysa null.</summary>
-    [ObservableProperty] private bool? _reachable;
+    public bool Matches(string query) =>
+        query.Length == 0 ||
+        Pack.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
+        Pack.Category.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
+        Pack.Domains.Any(d => d.Contains(query, StringComparison.OrdinalIgnoreCase));
+
+    public static PackItem Custom(string domain) =>
+        new(new SitePack("custom:" + domain, domain, "Özel", $"https://{domain}/", [domain]), true, isCustom: true);
+}
+
+public sealed partial class ScanSuggestion(string domain) : ObservableObject
+{
+    public string Domain { get; } = domain;
+    [ObservableProperty] private bool _selected = true;
 }
 
 public sealed partial class MainViewModel : ObservableObject
@@ -27,30 +45,48 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly SemaphoreSlim _gate = new(1, 1);
     private bool _loading = true;
 
-    [ObservableProperty] private ConnectionState _state = ConnectionState.Off;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(IsConnected), nameof(ToggleLabel), nameof(SwitchOn))]
+    private ConnectionState _state = ConnectionState.Off;
+
     [ObservableProperty] private string _statusText = "Bağlı değil";
-    [ObservableProperty] private string _statusDetail = "Başlamak için düğmeye dokunun";
+    [ObservableProperty] private string _statusDetail = "Başlatmak için anahtarı açın";
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private BypassProfile _selectedProfile;
     [ObservableProperty] private bool _dnsRedirect;
     [ObservableProperty] private bool _connectOnLaunch;
     [ObservableProperty] private bool _startWithWindows;
-    [ObservableProperty] private string _newDomain = "";
-    [ObservableProperty] private string? _conflictText;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasConflict))] private string? _conflictText;
 
     /// <summary>Kapatılabilir bilgi bandı (ör. kurulum tamamlandı).</summary>
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasNotice))] private string? _notice;
 
+    // Site listesi, arama ve ekleme paneli
+    [ObservableProperty] private string _searchText = "";
+    [ObservableProperty] private bool _isAddOpen;
+    [ObservableProperty] private string _newDomain = "";
+    [ObservableProperty] private string? _addMessage;
+    [ObservableProperty] private bool _isScanning;
+    [ObservableProperty] private string? _lastAddedDomain;
+
     public IReadOnlyList<BypassProfile> Profiles { get; } = Core.Profiles.All;
     public UpdateViewModel Update { get; }
-    public ObservableCollection<PackItem> Packs { get; }
-    public ObservableCollection<string> CustomDomains { get; }
+
+    /// <summary>Paketler ve özel siteler tek listede; özel siteler en altta.</summary>
+    public ObservableCollection<PackItem> Packs { get; } = [];
+
+    /// <summary>Arama kutusuna göre süzülmüş liste (arayüz bunu gösterir).</summary>
+    public ObservableCollection<PackItem> VisiblePacks { get; } = [];
+
+    public ObservableCollection<ScanSuggestion> ScanResults { get; } = [];
 
     public bool IsConnected => State is ConnectionState.On or ConnectionState.Warning;
+    public bool SwitchOn => State is ConnectionState.On or ConnectionState.Warning or ConnectionState.Busy;
     public bool HasConflict => ConflictText is not null;
     public bool HasNotice => Notice is not null;
+    public bool HasScanResults => ScanResults.Count > 0;
     public string ToggleLabel => IsConnected ? "Bağlantıyı kes" : "Bağlan";
     public string AppVersion => "v" + UpdateService.CurrentVersion;
+    public bool CanSuggest => UpdateService.Repo is not null;
 
     public MainViewModel(IBypassEngine? engine, AppSettings settings)
     {
@@ -63,9 +99,9 @@ public sealed partial class MainViewModel : ObservableObject
         _connectOnLaunch = settings.ConnectOnLaunch;
         _startWithWindows = SafeAutoStartState();
 
-        Packs = new(SitePacks.All.Select(p => new PackItem(p, settings.EnabledPacks.Contains(p.Id))));
-        foreach (var item in Packs) item.PropertyChanged += OnPackChanged;
-        CustomDomains = new(settings.CustomDomains);
+        RebuildPacks();
+        ScanResults.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasScanResults));
+        SitePacks.Changed += _ => Dispatcher.UIThread.Post(OnCatalogChanged);
 
         if (_engine is null)
         {
@@ -100,13 +136,159 @@ public sealed partial class MainViewModel : ObservableObject
         await ConnectAsync();
     }
 
-    partial void OnStateChanged(ConnectionState value)
+    // ---- Site listesi ----
+
+    private void RebuildPacks()
     {
-        OnPropertyChanged(nameof(IsConnected));
-        OnPropertyChanged(nameof(ToggleLabel));
+        foreach (var item in Packs) item.PropertyChanged -= OnPackChanged;
+        Packs.Clear();
+        foreach (var pack in SitePacks.All) Packs.Add(new PackItem(pack, _settings.IsPackEnabled(pack)));
+        foreach (var domain in _settings.CustomDomains) Packs.Add(PackItem.Custom(domain));
+        foreach (var item in Packs) item.PropertyChanged += OnPackChanged;
+        ApplyFilter();
     }
 
-    partial void OnConflictTextChanged(string? value) => OnPropertyChanged(nameof(HasConflict));
+    private void OnCatalogChanged()
+    {
+        var before = _settings.BuildHostList(SitePacks.All);
+        RebuildPacks();
+        if (IsConnected && !before.SequenceEqual(_settings.BuildHostList(SitePacks.All))) SaveAndReconnect();
+    }
+
+    partial void OnSearchTextChanged(string value) => ApplyFilter();
+
+    private void ApplyFilter()
+    {
+        var query = SearchText.Trim();
+        VisiblePacks.Clear();
+        foreach (var item in Packs.Where(p => p.Matches(query))) VisiblePacks.Add(item);
+    }
+
+    private void OnPackChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (_loading || e.PropertyName != nameof(PackItem.Enabled) || sender is not PackItem { IsCustom: false } item) return;
+        _settings.SetPackEnabled(item.Pack, item.Enabled);
+        SaveAndReconnect();
+    }
+
+    [RelayCommand]
+    private void ToggleAddPanel()
+    {
+        IsAddOpen = !IsAddOpen;
+        AddMessage = null;
+    }
+
+    [RelayCommand]
+    private async Task AddDomainAsync()
+    {
+        var domain = NormalizeDomain(NewDomain);
+        if (domain is null)
+        {
+            AddMessage = "Geçerli bir alan adı yazın, ör. reddit.com";
+            return;
+        }
+        NewDomain = "";
+        LastAddedDomain = domain;
+
+        if (SiteScanner.IsCovered(domain, _settings.BuildHostList(SitePacks.All)))
+        {
+            AddMessage = $"{domain} zaten listede.";
+            return;
+        }
+
+        _settings.CustomDomains.Add(domain);
+        _settings.Save();
+        var item = PackItem.Custom(domain);
+        item.PropertyChanged += OnPackChanged;
+        Packs.Add(item);
+        ApplyFilter();
+
+        if (!IsConnected)
+        {
+            AddMessage = $"{domain} eklendi. Bağlandığınızda bu sitenin kullandığı diğer adresleri de tarayabilirsiniz.";
+            return;
+        }
+
+        await ConnectAsync();
+        await ScanAsync();
+    }
+
+    /// <summary>Son eklenen sitenin kullandığı ve engelli görünen diğer alan adlarını bulur.</summary>
+    [RelayCommand]
+    private async Task ScanAsync()
+    {
+        if (LastAddedDomain is not { } domain) return;
+        if (!IsConnected)
+        {
+            AddMessage = "Taramak için önce bağlanın; aksi halde engelli site açılamaz.";
+            return;
+        }
+
+        IsScanning = true;
+        ScanResults.Clear();
+        AddMessage = $"{domain} taranıyor…";
+        try
+        {
+            var found = await SiteScanner.FindBlockedRelatedDomainsAsync(domain, _settings.BuildHostList(SitePacks.All));
+            foreach (var d in found) ScanResults.Add(new ScanSuggestion(d));
+            AddMessage = found.Count == 0
+                ? $"{domain} için engelli başka adres bulunmadı."
+                : $"{domain} şu adresleri de kullanıyor ve engelli görünüyor:";
+            Log.Write($"Tarama ({domain}): {(found.Count == 0 ? "yok" : string.Join(", ", found))}");
+        }
+        catch (Exception e)
+        {
+            AddMessage = $"{domain} açılamadı, taranamadı. Yöntemi değiştirip tekrar deneyin.";
+            Log.Write($"Tarama hatası ({domain}): {e.Message}");
+        }
+        finally
+        {
+            IsScanning = false;
+        }
+    }
+
+    [RelayCommand]
+    private void AddSuggestions()
+    {
+        var chosen = ScanResults.Where(s => s.Selected).Select(s => s.Domain).ToList();
+        foreach (var d in chosen.Where(d => !_settings.CustomDomains.Contains(d)))
+        {
+            _settings.CustomDomains.Add(d);
+            var item = PackItem.Custom(d);
+            item.PropertyChanged += OnPackChanged;
+            Packs.Add(item);
+        }
+        ScanResults.Clear();
+        ApplyFilter();
+        AddMessage = chosen.Count > 0 ? $"{chosen.Count} adres eklendi." : null;
+        SaveAndReconnect();
+    }
+
+    [RelayCommand]
+    private void RemoveCustom(PackItem item)
+    {
+        if (!item.IsCustom) return;
+        item.PropertyChanged -= OnPackChanged;
+        _settings.CustomDomains.Remove(item.Pack.Domains[0]);
+        Packs.Remove(item);
+        ApplyFilter();
+        SaveAndReconnect();
+    }
+
+    /// <summary>Son eklenen siteyi (ve bulunan adreslerini) GitHub'da herkes için öneri olarak açar.</summary>
+    [RelayCommand]
+    private void SuggestToEveryone()
+    {
+        if (UpdateService.Repo is not { } repo || LastAddedDomain is not { } domain) return;
+        var related = _settings.CustomDomains.Where(d => d != domain).ToList();
+        var domains = string.Join("\n", new[] { domain }.Concat(ScanResults.Select(s => s.Domain)).Concat(related).Distinct());
+        var url = $"https://github.com/{repo}/issues/new?template=site-onerisi.yml" +
+                  $"&title={Uri.EscapeDataString("Site önerisi: " + domain)}" +
+                  $"&site={Uri.EscapeDataString(domain)}&domains={Uri.EscapeDataString(domains)}";
+        Shell.OpenUrl(url);
+    }
+
+    // ---- Ayarlar ----
 
     partial void OnSelectedProfileChanged(BypassProfile value)
     {
@@ -145,37 +327,7 @@ public sealed partial class MainViewModel : ObservableObject
         }
     }
 
-    private void OnPackChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName != nameof(PackItem.Enabled)) return;
-        _settings.EnabledPacks = Packs.Where(p => p.Enabled).Select(p => p.Pack.Id).ToList();
-        SaveAndReconnect();
-    }
-
-    [RelayCommand]
-    private void AddDomain()
-    {
-        var domain = NormalizeDomain(NewDomain);
-        if (domain is null)
-        {
-            StatusDetail = "Geçerli bir alan adı girin (ör. reddit.com).";
-            return;
-        }
-        NewDomain = "";
-        if (CustomDomains.Contains(domain, StringComparer.OrdinalIgnoreCase)) return;
-
-        CustomDomains.Add(domain);
-        _settings.CustomDomains = CustomDomains.ToList();
-        SaveAndReconnect();
-    }
-
-    [RelayCommand]
-    private void RemoveDomain(string domain)
-    {
-        CustomDomains.Remove(domain);
-        _settings.CustomDomains = CustomDomains.ToList();
-        SaveAndReconnect();
-    }
+    // ---- Bağlantı ----
 
     [RelayCommand]
     private Task ToggleAsync() => IsConnected || State == ConnectionState.Busy ? DisconnectAsync() : ConnectAsync();
@@ -223,7 +375,7 @@ public sealed partial class MainViewModel : ObservableObject
             for (var i = 0; i < Profiles.Count; i++)
             {
                 lastTried = Profiles[i];
-                var score = await ConnectCoreAsync(lastTried, $"Deneniyor: {lastTried.Name} ({i + 1}/{Profiles.Count})");
+                var score = await ConnectCoreAsync(lastTried, $"{lastTried.Name} deneniyor ({i + 1}/{Profiles.Count})");
                 if (score > bestScore) (best, bestScore) = (lastTried, score);
                 if (score == ActivePacks().Count) break;
             }
@@ -271,61 +423,56 @@ public sealed partial class MainViewModel : ObservableObject
     [RelayCommand]
     private static void OpenLog()
     {
-        try
-        {
-            if (!File.Exists(Log.FilePath)) Log.Write("Günlük oluşturuldu");
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("notepad.exe", Log.FilePath) { UseShellExecute = false });
-        }
-        catch (Exception) { /* Not Defteri açılamadı. */ }
+        if (!File.Exists(Log.FilePath)) Log.Write("Günlük oluşturuldu");
+        Shell.OpenFile(Log.FilePath);
     }
 
     /// <summary>Motoru verilen yöntemle başlatır ve siteleri test eder; erişilebilen paket sayısını döner.</summary>
     private async Task<int> ConnectCoreAsync(BypassProfile profile, string? busyText = null)
     {
-        var hosts = _settings.BuildHostList();
+        var hosts = _settings.BuildHostList(SitePacks.All);
         if (hosts.Count == 0)
         {
             await _engine!.StopAsync();
             SetOff();
-            StatusDetail = "En az bir site seçin veya ekleyin.";
+            StatusDetail = "En az bir site açın veya ekleyin.";
             return 0;
         }
 
+        var active = ActivePacks();
         IsBusy = true;
         State = ConnectionState.Busy;
-        StatusText = busyText ?? "Bağlanıyor…";
-        StatusDetail = profile.Name;
-        foreach (var p in Packs) p.Reachable = null;
+        StatusText = "Bağlanıyor…";
+        StatusDetail = busyText ?? $"{profile.Name} yöntemi başlatılıyor";
+        foreach (var p in Packs) p.Status = p.Enabled ? PackStatus.Testing : PackStatus.None;
 
         try
         {
             await _engine!.StartAsync(new EngineOptions(profile, hosts, DnsRedirect));
 
-            var active = ActivePacks();
-            if (active.Count == 0)
-            {
-                SetOn(ConnectionState.On, $"{profile.Name} · {hosts.Count} site");
-                return 0;
-            }
-
-            if (busyText is null) StatusText = "Test ediliyor…";
+            if (busyText is null) StatusDetail = "Siteler test ediliyor";
             var results = await ConnectivityTester.TestPacksAsync(active.Select(p => p.Pack));
-            foreach (var p in active) p.Reachable = results[p.Pack];
+            foreach (var p in active) p.Status = results[p.Pack] ? PackStatus.Open : PackStatus.Blocked;
             Log.Write($"Test ({profile.Name}): " + string.Join(", ", results.Select(r => $"{r.Key.Name}={(r.Value ? "açık" : "kapalı")}")));
 
             var ok = results.Count(r => r.Value);
             if (ok == active.Count)
-                SetOn(ConnectionState.On, $"{profile.Name} · tüm siteler erişilebilir");
+            {
+                SetOn(ConnectionState.On, "Bağlı", $"{profile.Name} yöntemi · {ok} site açık");
+            }
             else
-                SetOn(ConnectionState.Warning,
-                    $"{string.Join(", ", results.Where(r => !r.Value).Select(r => r.Key.Name))} açılmadı. \"Otomatik bul\"u deneyin.");
+            {
+                var failed = string.Join(", ", results.Where(r => !r.Value).Select(r => r.Key.Name));
+                SetOn(ConnectionState.Warning, "Kısmen açık", $"{failed} açılmadı · Otomatik bul'u deneyin");
+            }
             return ok;
         }
         catch (Exception e)
         {
             Log.Write($"Bağlanma hatası ({profile.Name}): {e.Message}");
+            foreach (var p in Packs) p.Status = PackStatus.None;
             State = ConnectionState.Error;
-            StatusText = "Başlatılamadı";
+            StatusText = "Bağlanamadı";
             StatusDetail = e.Message;
             RefreshConflicts();
             return -1;
@@ -338,10 +485,10 @@ public sealed partial class MainViewModel : ObservableObject
 
     private List<PackItem> ActivePacks() => Packs.Where(p => p.Enabled).ToList();
 
-    private void SetOn(ConnectionState state, string detail)
+    private void SetOn(ConnectionState state, string text, string detail)
     {
         State = state;
-        StatusText = state == ConnectionState.On ? "Aktif" : "Kısmen aktif";
+        StatusText = text;
         StatusDetail = detail;
     }
 
@@ -349,15 +496,14 @@ public sealed partial class MainViewModel : ObservableObject
     {
         State = ConnectionState.Off;
         StatusText = "Bağlı değil";
-        StatusDetail = "Başlamak için düğmeye dokunun";
-        foreach (var p in Packs) p.Reachable = null;
+        StatusDetail = "Başlatmak için anahtarı açın";
+        foreach (var p in Packs) p.Status = PackStatus.None;
     }
 
     private async void SaveAndReconnect()
     {
         _settings.Save();
-        if (IsConnected || State == ConnectionState.Warning)
-            await ConnectAsync();
+        if (IsConnected) await ConnectAsync();
     }
 
     private void RefreshConflicts()

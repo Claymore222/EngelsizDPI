@@ -1,0 +1,45 @@
+{
+  "revision": 1,
+  "packs": [
+    {
+      "id": "discord",
+      "name": "Discord",
+      "category": "Sohbet",
+      "default": true,
+      "test": "https://discord.com/api/v9/gateway",
+      "domains": [
+        "discord.com",
+        "discord.gg",
+        "discordapp.com",
+        "discordapp.net",
+        "discord.media",
+        "discord.co",
+        "discord.new",
+        "discord.gift",
+        "dis.gd",
+        "discord-attachments-uploads-prd.storage.googleapis.com"
+      ]
+    },
+    {
+      "id": "roblox",
+      "name": "Roblox",
+      "category": "Oyun",
+      "default": true,
+      "test": "https://www.roblox.com/",
+      "domains": [
+        "roblox.com",
+        "rbxcdn.com"
+      ]
+    },
+    {
+      "id": "wattpad",
+      "name": "Wattpad",
+      "category": "Okuma",
+      "default": false,
+      "test": "https://www.wattpad.com/",
+      "domains": [
+        "wattpad.com"
+      ]
+    }
+  ]
+}

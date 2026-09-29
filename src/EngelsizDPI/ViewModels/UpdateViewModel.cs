@@ -144,8 +144,6 @@ public sealed partial class UpdateViewModel : ObservableObject
 
     private void OpenReleasePage()
     {
-        if (_info is null) return;
-        try { Process.Start(new ProcessStartInfo(_info.ReleaseUrl) { UseShellExecute = true }); }
-        catch (Exception) { /* Tarayıcı açılamadı. */ }
+        if (_info is not null) Shell.OpenUrl(_info.ReleaseUrl);
     }
 }

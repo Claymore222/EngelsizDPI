@@ -46,6 +46,8 @@
     <AvaloniaResource Include="Assets\**" />
     <!-- Motor dosyaları exe'ye gömülür ve ilk çalıştırmada ProgramData altına çıkarılır. -->
     <EmbeddedResource Include="Engine\win-x64\*" LogicalName="engine.win-x64.%(Filename)%(Extension)" />
+    <!-- Site listesinin yedeği: GitHub'a ulaşılamazsa bu kullanılır. Asıl kaynak repodaki packs/packs.json. -->
+    <EmbeddedResource Include="..\..\packs\packs.json" LogicalName="packs.json" Link="packs.json" />
   </ItemGroup>
 
 </Project>

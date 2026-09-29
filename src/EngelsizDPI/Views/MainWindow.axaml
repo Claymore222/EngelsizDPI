@@ -7,31 +7,88 @@
         x:DataType="vm:MainViewModel"
         Title="EngelsizDPI"
         Icon="/Assets/app.ico"
-        Width="400" Height="720" MinWidth="360" MinHeight="560"
+        Width="460" Height="820" MinWidth="400" MinHeight="600"
         WindowStartupLocation="CenterScreen"
-        Background="{StaticResource BgBrush}">
+        Background="{StaticResource BgBrush}"
+        Foreground="{StaticResource TextBrush}">
 
   <Window.Styles>
+    <!-- Ayarlar uygulaması tarzı kart ve satırlar -->
     <Style Selector="Border.card">
       <Setter Property="Background" Value="{StaticResource CardBrush}" />
       <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
       <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="CornerRadius" Value="14" />
-      <Setter Property="Padding" Value="16,14" />
+      <Setter Property="CornerRadius" Value="8" />
     </Style>
-    <Style Selector="TextBlock.h">
-      <Setter Property="FontSize" Value="12" />
-      <Setter Property="FontWeight" Value="SemiBold" />
+    <Style Selector="Border.row">
+      <Setter Property="Padding" Value="16,0" />
+      <Setter Property="MinHeight" Value="52" />
+      <Setter Property="BorderBrush" Value="{StaticResource SeparatorBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="Border.row.last">
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="TextBlock.section">
+      <Setter Property="FontSize" Value="13" />
       <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
-      <Setter Property="Margin" Value="4,0,0,8" />
+      <Setter Property="Margin" Value="4,20,0,8" />
     </Style>
     <Style Selector="TextBlock.muted">
       <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
       <Setter Property="FontSize" Value="12" />
     </Style>
+    <Style Selector="ToggleSwitch">
+      <Setter Property="OnContent" Value="" />
+      <Setter Property="OffContent" Value="" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
 
-    <!-- Büyük güç düğmesi -->
-    <Style Selector="Button.power">
+    <!-- Metin gibi görünen bağlantı düğmesi -->
+    <Style Selector="Button.link">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="4,2" />
+      <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.link:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{StaticResource AccentHoverBrush}" />
+    </Style>
+    <Style Selector="Button.link:disabled /template/ ContentPresenter">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{StaticResource DimBrush}" />
+    </Style>
+    <Style Selector="Button.link.quiet">
+      <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+    </Style>
+    <Style Selector="Button.link.quiet:pointerover /template/ ContentPresenter">
+      <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+    </Style>
+
+    <Style Selector="Button.accent">
+      <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource OnAccentBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="14,6" />
+    </Style>
+    <Style Selector="Button.accent:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{StaticResource AccentHoverBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource OnAccentBrush}" />
+    </Style>
+    <Style Selector="Button.plain">
+      <Setter Property="Background" Value="{StaticResource CardBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="14,6" />
+    </Style>
+
+    <!-- Büyük bağlantı anahtarı -->
+    <Style Selector="Button.switch">
       <Setter Property="Padding" Value="0" />
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
@@ -41,248 +98,248 @@
           <ContentPresenter Content="{TemplateBinding Content}" />
         </ControlTemplate>
       </Setter>
-      <Setter Property="RenderTransform" Value="scale(1)" />
-      <Setter Property="Transitions">
-        <Transitions>
-          <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.12" />
-        </Transitions>
-      </Setter>
-    </Style>
-    <Style Selector="Button.power:pointerover">
-      <Setter Property="RenderTransform" Value="scale(1.03)" />
-    </Style>
-    <Style Selector="Button.power:pressed">
-      <Setter Property="RenderTransform" Value="scale(0.97)" />
     </Style>
 
-    <Style Selector="Arc.spinner">
+    <Style Selector="PathIcon.spin">
       <Style.Animations>
-        <Animation Duration="0:0:1.1" IterationCount="Infinite">
+        <Animation Duration="0:0:1.4" IterationCount="Infinite">
           <KeyFrame Cue="0%"><Setter Property="RotateTransform.Angle" Value="0" /></KeyFrame>
           <KeyFrame Cue="100%"><Setter Property="RotateTransform.Angle" Value="360" /></KeyFrame>
         </Animation>
       </Style.Animations>
     </Style>
-
-    <Style Selector="Button.ghost">
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
-      <Setter Property="Padding" Value="6,2" />
-      <Setter Property="CornerRadius" Value="8" />
-    </Style>
-    <Style Selector="Button.accent">
-      <Setter Property="Background" Value="{StaticResource AccentBrush}" />
-      <Setter Property="Foreground" Value="White" />
-      <Setter Property="CornerRadius" Value="10" />
-      <Setter Property="Padding" Value="14,7" />
-      <Setter Property="FontWeight" Value="SemiBold" />
-    </Style>
-    <Style Selector="Button.accent:pointerover /template/ ContentPresenter">
-      <Setter Property="Background" Value="{StaticResource AccentHoverBrush}" />
-      <Setter Property="Foreground" Value="White" />
-    </Style>
   </Window.Styles>
 
   <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Margin="20,18,20,20" Spacing="14">
+    <StackPanel Margin="20,18,20,20">
 
       <!-- Başlık -->
-      <Grid ColumnDefinitions="Auto,*,Auto">
-        <Border Width="34" Height="34" CornerRadius="10" Background="{StaticResource AccentBrush}">
-          <PathIcon Width="18" Height="18" Foreground="White" Data="{StaticResource ShieldIcon}" />
+      <StackPanel Orientation="Horizontal" Spacing="12">
+        <Border Width="32" Height="32" CornerRadius="7" Background="{StaticResource AccentBrush}">
+          <PathIcon Width="18" Height="18" Foreground="{StaticResource OnAccentBrush}" Data="{StaticResource ShieldIcon}" />
         </Border>
-        <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
-          <TextBlock Text="EngelsizDPI" FontSize="18" FontWeight="Bold" />
-          <TextBlock Classes="muted" Text="Discord ve Roblox'a VPN'siz erişim" />
-          <TextBlock Classes="muted" FontSize="11" Opacity="0.75" Text="GoodbyeDPI + Güvenli DNS" />
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock Text="EngelsizDPI" FontSize="16" FontWeight="SemiBold" />
+          <TextBlock Classes="muted" Text="GoodbyeDPI + güvenli DNS" />
         </StackPanel>
-        <TextBlock Grid.Column="2" Classes="muted" VerticalAlignment="Center" Text="{Binding AppVersion}" />
-      </Grid>
+      </StackPanel>
 
-      <!-- Bilgi bandı (ör. kurulum tamamlandı) -->
-      <Border IsVisible="{Binding HasNotice}" Background="#10261A" BorderBrush="#1F5A36" BorderThickness="1"
-              CornerRadius="12" Padding="14,10">
-        <Grid ColumnDefinitions="*,Auto">
-          <TextBlock Text="{Binding Notice}" TextWrapping="Wrap" FontSize="12" Foreground="#86EFAC"
-                     VerticalAlignment="Center" />
-          <Button Grid.Column="1" Classes="ghost" Margin="8,0,0,0" Content="Tamam"
-                  Command="{Binding DismissNoticeCommand}" />
+      <!-- Bilgi bantları -->
+      <Border Classes="card" Margin="0,16,0,0" Padding="14,10" IsVisible="{Binding HasNotice}">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <PathIcon Width="16" Height="16" Foreground="{StaticResource AccentBrush}" Data="{StaticResource CheckIcon}" VerticalAlignment="Top" Margin="0,1,10,0" />
+          <TextBlock Grid.Column="1" Text="{Binding Notice}" TextWrapping="Wrap" FontSize="12" VerticalAlignment="Center" />
+          <Button Grid.Column="2" Classes="link quiet" Margin="8,0,0,0" Content="Tamam" Command="{Binding DismissNoticeCommand}" />
         </Grid>
       </Border>
 
-      <!-- Güncelleme bildirimi -->
-      <Border IsVisible="{Binding Update.IsAvailable}" Background="#1B1D3A" BorderBrush="#3B3F8F" BorderThickness="1"
-              CornerRadius="12" Padding="14,10">
+      <Border Classes="card" Margin="0,16,0,0" Padding="14,10" IsVisible="{Binding Update.IsAvailable}">
         <StackPanel Spacing="8">
           <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Text="{Binding Update.BannerText}" TextWrapping="Wrap" FontSize="12" Foreground="#C7D2FE"
-                       VerticalAlignment="Center" />
+            <TextBlock Text="{Binding Update.BannerText}" TextWrapping="Wrap" FontSize="12" VerticalAlignment="Center" />
             <Button Grid.Column="1" Classes="accent" Margin="10,0,0,0" Content="{Binding Update.ActionLabel}"
                     Command="{Binding Update.UpdateNowCommand}" IsEnabled="{Binding !Update.IsDownloading}" />
           </Grid>
           <ProgressBar IsVisible="{Binding Update.IsDownloading}" Value="{Binding Update.Progress}" Maximum="100"
-                       Height="4" MinHeight="4" CornerRadius="2" />
+                       Height="3" MinHeight="3" Foreground="{StaticResource AccentBrush}" />
         </StackPanel>
       </Border>
 
-      <!-- Çakışma uyarısı -->
-      <Border IsVisible="{Binding HasConflict}" Background="#2A2210" BorderBrush="#5C4611" BorderThickness="1"
-              CornerRadius="12" Padding="14,10">
+      <Border Margin="0,16,0,0" Padding="14,10" CornerRadius="8" BorderThickness="1"
+              Background="#231C2A" BorderBrush="#5C2A3A" IsVisible="{Binding HasConflict}">
         <Grid ColumnDefinitions="*,Auto">
-          <TextBlock Text="{Binding ConflictText}" TextWrapping="Wrap" FontSize="12" Foreground="#FCD34D"
-                     VerticalAlignment="Center" />
-          <Button Grid.Column="1" Classes="accent" Margin="10,0,0,0" Content="Düzelt"
-                  Command="{Binding FixConflictsCommand}" />
+          <TextBlock Text="{Binding ConflictText}" TextWrapping="Wrap" FontSize="12" Foreground="#F3B2BF" VerticalAlignment="Center" />
+          <Button Grid.Column="1" Classes="plain" Margin="10,0,0,0" Content="Düzelt" Command="{Binding FixConflictsCommand}" />
         </Grid>
       </Border>
 
-      <!-- Güç düğmesi ve durum -->
-      <StackPanel Spacing="0" Margin="0,-24,0,6">
-        <Button Classes="power" HorizontalAlignment="Center" Command="{Binding ToggleCommand}"
-                ToolTip.Tip="{Binding ToggleLabel}">
-          <Panel Width="250" Height="250">
-            <Border Width="176" Height="176" CornerRadius="88" Background="{StaticResource CardBrush}"
-                    BorderBrush="{Binding State, Converter={x:Static v:Converters.StateBrush}}" BorderThickness="3"
-                    BoxShadow="{Binding State, Converter={x:Static v:Converters.StateGlow}}">
-              <Border.Transitions>
-                <Transitions>
-                  <BrushTransition Property="BorderBrush" Duration="0:0:0.25" />
-                  <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.35" />
-                </Transitions>
-              </Border.Transitions>
-              <PathIcon Width="54" Height="54" Data="{StaticResource PowerIcon}"
-                        Foreground="{Binding State, Converter={x:Static v:Converters.StateBrush}}" />
+      <!-- Durum kartı -->
+      <Border Margin="0,16,0,0" Padding="18,18" CornerRadius="8" BorderThickness="1"
+              Background="{Binding State, Converter={x:Static v:Converters.StateCardBackground}}"
+              BorderBrush="{Binding State, Converter={x:Static v:Converters.StateCardBorder}}">
+        <Border.Transitions>
+          <Transitions>
+            <BrushTransition Property="Background" Duration="0:0:0.25" />
+            <BrushTransition Property="BorderBrush" Duration="0:0:0.25" />
+          </Transitions>
+        </Border.Transitions>
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <PathIcon Width="28" Height="28" Margin="0,0,14,0" VerticalAlignment="Center"
+                    Classes.spin="{Binding IsBusy}"
+                    Data="{Binding State, Converter={x:Static v:Converters.StateIcon}}"
+                    Foreground="{Binding State, Converter={x:Static v:Converters.StateBrush}}">
+            <PathIcon.RenderTransform><RotateTransform /></PathIcon.RenderTransform>
+          </PathIcon>
+          <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+            <TextBlock Text="{Binding StatusText}" FontSize="22" FontWeight="SemiBold"
+                       Foreground="{Binding State, Converter={x:Static v:Converters.StateBrush}}" />
+            <TextBlock Classes="muted" Text="{Binding StatusDetail}" TextWrapping="Wrap" FontSize="13" />
+          </StackPanel>
+          <Button Grid.Column="2" Classes="switch" Margin="12,0,0,0" VerticalAlignment="Center"
+                  Command="{Binding ToggleCommand}" ToolTip.Tip="{Binding ToggleLabel}">
+            <Border Width="52" Height="28" CornerRadius="14" BorderThickness="1" Padding="4"
+                    Background="{Binding State, Converter={x:Static v:Converters.SwitchFill}}"
+                    BorderBrush="{Binding State, Converter={x:Static v:Converters.SwitchStroke}}">
+              <Ellipse Width="18" Height="18"
+                       HorizontalAlignment="{Binding SwitchOn, Converter={x:Static v:Converters.KnobAlignment}}"
+                       Fill="{Binding State, Converter={x:Static v:Converters.SwitchKnob}}" />
             </Border>
-            <Arc Classes="spinner" IsVisible="{Binding IsBusy}" Width="192" Height="192" StartAngle="0" SweepAngle="80"
-                 Stroke="{StaticResource BusyBrush}" StrokeThickness="3" StrokeLineCap="Round">
-              <Arc.RenderTransform><RotateTransform /></Arc.RenderTransform>
-            </Arc>
-          </Panel>
-        </Button>
-
-        <StackPanel HorizontalAlignment="Center" Spacing="4" Margin="0,-22,0,0">
-          <TextBlock HorizontalAlignment="Center" FontSize="22" FontWeight="Bold" Text="{Binding StatusText}" />
-          <TextBlock HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" MaxWidth="320"
-                     Classes="muted" FontSize="13" Text="{Binding StatusDetail}" />
-        </StackPanel>
-      </StackPanel>
+          </Button>
+        </Grid>
+      </Border>
 
       <!-- Siteler -->
-      <StackPanel>
-        <TextBlock Classes="h" Text="SİTELER" />
-        <Border Classes="card" Padding="16,6">
-          <StackPanel>
-            <ItemsControl ItemsSource="{Binding Packs}">
-              <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:PackItem">
-                  <Grid ColumnDefinitions="*,Auto,Auto" Height="46">
-                    <TextBlock VerticalAlignment="Center" FontSize="15" FontWeight="SemiBold" Text="{Binding Name}" />
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="0,0,8,0">
-                      <Ellipse Width="7" Height="7" Fill="{Binding Reachable, Converter={x:Static v:Converters.ReachableBrush}}" />
-                      <TextBlock Classes="muted" Text="{Binding Reachable, Converter={x:Static v:Converters.ReachableText}}" />
+      <TextBlock Classes="section" Text="Siteler" />
+      <Border Classes="card">
+        <StackPanel>
+          <Border Padding="12,10" BorderBrush="{StaticResource SeparatorBrush}" BorderThickness="0,0,0,1">
+            <TextBox Text="{Binding SearchText}" PlaceholderText="Site ara" CornerRadius="6" MinHeight="32">
+              <TextBox.InnerLeftContent>
+                <PathIcon Width="14" Height="14" Margin="10,0,0,0" Foreground="{StaticResource DimBrush}" Data="{StaticResource SearchIcon}" />
+              </TextBox.InnerLeftContent>
+            </TextBox>
+          </Border>
+
+          <ItemsControl ItemsSource="{Binding VisiblePacks}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:PackItem">
+                <Border Classes="row">
+                  <Grid ColumnDefinitions="Auto,*,Auto,44">
+                    <Border Width="30" Height="30" CornerRadius="6" Background="{StaticResource AvatarBrush}" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Initial}" FontWeight="SemiBold" FontSize="13"
+                                 HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" />
+                    </Border>
+                    <StackPanel Grid.Column="1" Margin="12,9" VerticalAlignment="Center" Spacing="1">
+                      <TextBlock Text="{Binding Name}" FontSize="14"
+                                 Foreground="{Binding Enabled, Converter={x:Static v:Converters.EnabledNameBrush}}" />
+                      <TextBlock Classes="muted" Text="{Binding Subtitle}" FontSize="11" />
                     </StackPanel>
-                    <ToggleSwitch Grid.Column="2" IsChecked="{Binding Enabled}" OnContent="" OffContent="" MinWidth="0" />
+                    <TextBlock Grid.Column="2" Margin="0,0,12,0" VerticalAlignment="Center" FontSize="12"
+                               Text="{Binding Status, Converter={x:Static v:Converters.PackStatusText}}"
+                               Foreground="{Binding Status, Converter={x:Static v:Converters.PackStatusBrush}}" />
+                    <ToggleSwitch Grid.Column="3" IsChecked="{Binding Enabled}" IsVisible="{Binding !IsCustom}" HorizontalAlignment="Right" />
+                    <Button Grid.Column="3" Classes="link quiet" IsVisible="{Binding IsCustom}" ToolTip.Tip="Kaldır" HorizontalAlignment="Center"
+                            Command="{Binding $parent[ItemsControl].((vm:MainViewModel)DataContext).RemoveCustomCommand}"
+                            CommandParameter="{Binding}">
+                      <PathIcon Width="12" Height="12" Data="{StaticResource CloseIcon}" />
+                    </Button>
                   </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <!-- Site ekle / tara / öner -->
+          <Button Classes="link" Margin="10,8" Command="{Binding ToggleAddPanelCommand}" IsVisible="{Binding !IsAddOpen}">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <PathIcon Width="12" Height="12" Data="{StaticResource PlusIcon}" />
+              <TextBlock Text="Site ekle veya tara" FontSize="13" />
+            </StackPanel>
+          </Button>
+
+          <StackPanel IsVisible="{Binding IsAddOpen}" Margin="16,12,16,14" Spacing="10">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+              <TextBox Text="{Binding NewDomain}" PlaceholderText="reddit.com" CornerRadius="6" MinHeight="32">
+                <TextBox.KeyBindings>
+                  <KeyBinding Gesture="Enter" Command="{Binding AddDomainCommand}" />
+                </TextBox.KeyBindings>
+              </TextBox>
+              <Button Grid.Column="1" Classes="accent" Margin="8,0,0,0" Content="Ekle" Command="{Binding AddDomainCommand}" />
+              <Button Grid.Column="2" Classes="link quiet" Margin="4,0,0,0" ToolTip.Tip="Kapat" Command="{Binding ToggleAddPanelCommand}">
+                <PathIcon Width="12" Height="12" Data="{StaticResource CloseIcon}" />
+              </Button>
+            </Grid>
+            <TextBlock Classes="muted" TextWrapping="Wrap" IsVisible="{Binding AddMessage, Converter={x:Static ObjectConverters.IsNull}}"
+                       Text="Eklediğiniz sitenin kullandığı diğer adresler (resimler, sunucular) otomatik taranır ve engelli olanlar önerilir." />
+            <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsScanning}">
+              <ProgressBar IsIndeterminate="True" Width="80" Height="3" MinHeight="3" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center" />
+            </StackPanel>
+            <TextBlock TextWrapping="Wrap" FontSize="12" Text="{Binding AddMessage}"
+                       IsVisible="{Binding AddMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            <ItemsControl ItemsSource="{Binding ScanResults}" IsVisible="{Binding HasScanResults}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ScanSuggestion">
+                  <CheckBox IsChecked="{Binding Selected}" Content="{Binding Domain}" FontFamily="Consolas, Menlo, monospace" FontSize="12" />
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-
-            <Separator Background="{StaticResource LineBrush}" Margin="0,2" />
-
-            <StackPanel Spacing="8" Margin="0,10,0,10">
-              <TextBlock Classes="muted" Text="Özel siteler" />
-              <Grid ColumnDefinitions="*,Auto">
-                <TextBox Text="{Binding NewDomain}" PlaceholderText="ör. reddit.com" CornerRadius="10">
-                  <TextBox.KeyBindings>
-                    <KeyBinding Gesture="Enter" Command="{Binding AddDomainCommand}" />
-                  </TextBox.KeyBindings>
-                </TextBox>
-                <Button Grid.Column="1" Classes="accent" Margin="8,0,0,0" Content="Ekle"
-                        Command="{Binding AddDomainCommand}" />
-              </Grid>
-              <ItemsControl ItemsSource="{Binding CustomDomains}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="x:String">
-                    <Grid ColumnDefinitions="*,Auto" Height="32">
-                      <TextBlock VerticalAlignment="Center" FontFamily="Consolas, Menlo, monospace" Text="{Binding}" />
-                      <Button Grid.Column="1" Classes="ghost" Content="Kaldır"
-                              Command="{Binding $parent[ItemsControl].((vm:MainViewModel)DataContext).RemoveDomainCommand}"
-                              CommandParameter="{Binding}" />
-                    </Grid>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button Classes="plain" Content="Seçilenleri ekle" Command="{Binding AddSuggestionsCommand}" IsVisible="{Binding HasScanResults}" />
+              <Button Classes="link" Content="Tekrar tara" Command="{Binding ScanCommand}"
+                      IsVisible="{Binding LastAddedDomain, Converter={x:Static ObjectConverters.IsNotNull}}" IsEnabled="{Binding !IsScanning}" />
+              <Button Classes="link" Content="Herkese öner" Command="{Binding SuggestToEveryoneCommand}"
+                      IsVisible="{Binding LastAddedDomain, Converter={x:Static ObjectConverters.IsNotNull}}"
+                      ToolTip.Tip="Bu siteyi GitHub'da herkesin listesine eklenmesi için önerin" />
             </StackPanel>
           </StackPanel>
-        </Border>
-      </StackPanel>
+        </StackPanel>
+      </Border>
 
       <!-- Yöntem -->
-      <StackPanel>
-        <TextBlock Classes="h" Text="YÖNTEM" />
-        <Border Classes="card">
-          <StackPanel Spacing="8">
-            <Grid ColumnDefinitions="*,Auto">
-              <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}"
-                        HorizontalAlignment="Stretch" CornerRadius="10" IsEnabled="{Binding !IsBusy}">
-                <ComboBox.ItemTemplate>
-                  <DataTemplate x:DataType="core:BypassProfile">
-                    <TextBlock Text="{Binding Name}" />
-                  </DataTemplate>
-                </ComboBox.ItemTemplate>
-              </ComboBox>
-              <Button Grid.Column="1" Classes="accent" Margin="8,0,0,0" Content="Otomatik bul"
-                      Command="{Binding AutoFindCommand}" IsEnabled="{Binding !IsBusy}"
-                      ToolTip.Tip="Tüm yöntemleri dener ve sizin bağlantınızda çalışanı seçer" />
-            </Grid>
-            <TextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding SelectedProfile.Description}" />
-          </StackPanel>
-        </Border>
-      </StackPanel>
+      <TextBlock Classes="section" Text="Yöntem" />
+      <Border Classes="card" Padding="16,12">
+        <StackPanel Spacing="8">
+          <Grid ColumnDefinitions="*,Auto">
+            <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}" HorizontalAlignment="Stretch"
+                      CornerRadius="6" IsEnabled="{Binding !IsBusy}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="core:BypassProfile">
+                  <TextBlock Text="{Binding Name}" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <Button Grid.Column="1" Classes="link" Margin="12,0,0,0" Content="Otomatik bul" Command="{Binding AutoFindCommand}"
+                    IsEnabled="{Binding !IsBusy}" ToolTip.Tip="Tüm yöntemleri dener ve sizin bağlantınızda çalışanı seçer" />
+          </Grid>
+          <TextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding SelectedProfile.Description}" />
+        </StackPanel>
+      </Border>
 
       <!-- Ayarlar -->
-      <StackPanel>
-        <TextBlock Classes="h" Text="AYARLAR" />
-        <Border Classes="card" Padding="16,4">
-          <StackPanel>
-            <Grid ColumnDefinitions="*,Auto" MinHeight="48">
-              <StackPanel VerticalAlignment="Center">
-                <TextBlock Text="Windows açılınca başlat" />
+      <TextBlock Classes="section" Text="Ayarlar" />
+      <Border Classes="card">
+        <StackPanel>
+          <Border Classes="row">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="Windows açılınca başlat" VerticalAlignment="Center" />
+              <ToggleSwitch Grid.Column="1" IsChecked="{Binding StartWithWindows}" />
+            </Grid>
+          </Border>
+          <Border Classes="row">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="Açılışta otomatik bağlan" VerticalAlignment="Center" />
+              <ToggleSwitch Grid.Column="1" IsChecked="{Binding ConnectOnLaunch}" />
+            </Grid>
+          </Border>
+          <Border Classes="row">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel VerticalAlignment="Center" Margin="0,9" Spacing="2">
+                <TextBlock Text="Güvenli DNS" />
+                <TextBlock Classes="muted" TextWrapping="Wrap" Margin="0,0,12,0"
+                           Text="DNS sorgularını Yandex DNS'e (port 1253) yönlendirir" />
               </StackPanel>
-              <ToggleSwitch Grid.Column="1" IsChecked="{Binding StartWithWindows}" OnContent="" OffContent="" MinWidth="0" />
+              <ToggleSwitch Grid.Column="1" IsChecked="{Binding DnsRedirect}" />
             </Grid>
-            <Grid ColumnDefinitions="*,Auto" MinHeight="48">
-              <TextBlock VerticalAlignment="Center" Text="Açılışta otomatik bağlan" />
-              <ToggleSwitch Grid.Column="1" IsChecked="{Binding ConnectOnLaunch}" OnContent="" OffContent="" MinWidth="0" />
+          </Border>
+          <Border Classes="row last" IsVisible="{Binding Update.CanCheck}">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="Otomatik güncelle" VerticalAlignment="Center" />
+              <ToggleSwitch Grid.Column="1" IsChecked="{Binding Update.AutoUpdate}" />
             </Grid>
-            <Grid ColumnDefinitions="*,Auto" MinHeight="48" IsVisible="{Binding Update.CanCheck}">
-              <TextBlock VerticalAlignment="Center" Text="Güncellemeleri otomatik yükle" />
-              <ToggleSwitch Grid.Column="1" IsChecked="{Binding Update.AutoUpdate}" OnContent="" OffContent="" MinWidth="0" />
-            </Grid>
-            <Grid ColumnDefinitions="*,Auto" MinHeight="56">
-              <StackPanel VerticalAlignment="Center" Spacing="2" Margin="0,6,0,0">
-                <TextBlock Text="Güvenli DNS yönlendirmesi" />
-                <TextBlock Classes="muted" TextWrapping="Wrap" Margin="0,0,8,6" Text="DNS sorgularını Yandex DNS'e (port 1253) yönlendirir" />
-              </StackPanel>
-              <ToggleSwitch Grid.Column="1" IsChecked="{Binding DnsRedirect}" OnContent="" OffContent="" MinWidth="0" />
-            </Grid>
-          </StackPanel>
-        </Border>
-      </StackPanel>
-
-      <StackPanel HorizontalAlignment="Center" Spacing="2" Margin="0,4,0,0">
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="4">
-          <Button Classes="ghost" FontSize="12" IsVisible="{Binding Update.CanCheck}"
-                  Content="Güncellemeleri denetle" Command="{Binding Update.CheckCommand}" />
-          <Button Classes="ghost" FontSize="12" Content="Günlüğü aç" Command="{Binding OpenLogCommand}"
-                  ToolTip.Tip="Sorun bildirirken bu dosyayı ekleyin" />
+          </Border>
         </StackPanel>
-        <TextBlock Classes="muted" HorizontalAlignment="Center" FontSize="11" IsVisible="{Binding Update.CheckMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
-                   Text="{Binding Update.CheckMessage}" />
-        <TextBlock Classes="muted" HorizontalAlignment="Center" FontSize="11" Margin="0,4,0,0"
-                   Text="GoodbyeDPI ve WinDivert tabanlıdır · Pencereyi kapatınca tepside çalışmaya devam eder"
-                   TextWrapping="Wrap" TextAlignment="Center" />
-      </StackPanel>
+      </Border>
+
+      <!-- Alt bilgi -->
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="4,14,0,0">
+        <TextBlock Classes="muted" Text="{Binding AppVersion}" VerticalAlignment="Center" />
+        <Button Grid.Column="2" Classes="link quiet" FontSize="12" Content="Güncellemeleri denetle"
+                Command="{Binding Update.CheckCommand}" IsVisible="{Binding Update.CanCheck}" />
+        <Button Grid.Column="3" Classes="link quiet" FontSize="12" Content="Günlük" Command="{Binding OpenLogCommand}"
+                ToolTip.Tip="Sorun bildirirken bu dosyayı ekleyin" />
+      </Grid>
+      <TextBlock Classes="muted" FontSize="11" Margin="4,4,0,0" TextWrapping="Wrap" Text="{Binding Update.CheckMessage}"
+                 IsVisible="{Binding Update.CheckMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
     </StackPanel>
   </ScrollViewer>
 </Window>

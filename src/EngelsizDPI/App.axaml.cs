@@ -51,12 +51,24 @@ public partial class App : Application
             _vm.Update.PropertyChanged += OnUpdateChanged;
             _vm.Update.RestartRequested += path => _ = RestartForUpdateAsync(path);
             _vm.Update.StartBackgroundChecks();
+            StartPackRefresh();
 
             _ = _vm.StartupAsync();
         }
 
         base.OnFrameworkInitializationCompleted();
     }
+
+    /// <summary>Site listesini açılıştan kısa süre sonra ve ardından 6 saatte bir GitHub'dan yeniler.</summary>
+    private static void StartPackRefresh() => _ = Task.Run(async () =>
+    {
+        await Task.Delay(TimeSpan.FromSeconds(5));
+        using var timer = new PeriodicTimer(TimeSpan.FromHours(6));
+        do
+        {
+            await SitePacks.RefreshAsync();
+        } while (await timer.WaitForNextTickAsync());
+    });
 
     private void CreateTrayIcon()
     {
@@ -171,7 +183,7 @@ public partial class App : Application
             var shield = (Geometry)Current!.FindResource("ShieldIcon")!;
             using (ctx.PushTransform(Matrix.CreateScale(size / 24.0, size / 24.0)))
             {
-                ctx.DrawGeometry(new SolidColorBrush(Palette.For(state) == Palette.Off ? Color.Parse("#9CA3AF") : Palette.For(state)), null, shield);
+                ctx.DrawGeometry(new SolidColorBrush(Palette.For(state)), null, shield);
             }
         }
 
