@@ -1,0 +1,50 @@
+name: Release
+
+# "v1.2.3" biçiminde bir etiket gönderildiğinde tek dosyalık exe derlenir ve GitHub Releases'e yüklenir:
+#   git tag v1.0.0 && git push origin v1.0.0
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Publish
+        shell: pwsh
+        run: |
+          $version = if ($env:GITHUB_REF_TYPE -eq 'tag') { $env:GITHUB_REF_NAME.TrimStart('v') } else { '0.0.0' }
+          # GitHubRepo: uygulamanın güncellemeleri hangi depodan alacağı (bu depo).
+          dotnet publish src/EngelsizDPI/EngelsizDPI.csproj -c Release -r win-x64 -o publish -p:Version=$version -p:GitHubRepo=$env:GITHUB_REPOSITORY
+          # Uygulama indirdiği güncellemeyi bu özetle doğrular.
+          $hash = (Get-FileHash publish/EngelsizDPI.exe -Algorithm SHA256).Hash.ToLower()
+          "$hash  EngelsizDPI.exe" | Out-File -Encoding ascii -NoNewline publish/EngelsizDPI.exe.sha256
+
+      - name: Test
+        run: dotnet test --project tests/EngelsizDPI.Tests/EngelsizDPI.Tests.csproj -c Release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EngelsizDPI-win-x64
+          path: |
+            publish/EngelsizDPI.exe
+            publish/EngelsizDPI.exe.sha256
+
+      - name: GitHub Release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            publish/EngelsizDPI.exe
+            publish/EngelsizDPI.exe.sha256
+          generate_release_notes: true
