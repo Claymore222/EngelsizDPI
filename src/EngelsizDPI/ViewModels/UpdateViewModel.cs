@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -7,9 +6,12 @@ using EngelsizDPI.Core;
 namespace EngelsizDPI.ViewModels;
 
 /// <summary>
-/// Güncelleme denetimi: açılıştan kısa süre sonra ve ardından 6 saatte bir GitHub'a bakar. Otomatik güncelleme
-/// açıksa yeni sürümü sessizce indirir; kurulum bir sonraki açılışta ya da kullanıcı "Yeniden başlat"a
-/// bastığında yapılır. Böylece kullanıcı bir Discord görüşmesinin ortasında bağlantısını kaybetmez.
+/// Güncellemeler. Kullanıcı sormadan kurulum yapılmaz:
+/// - "Güncellemeleri denetle" yalnızca haber verir; kullanıcı "Şimdi yükle" derse indirilip kurulur,
+///   "Sonra" derse bant kapanır ve tepsi menüsünden istediği zaman kurabilir.
+/// - Arka planda (açılıştan kısa süre sonra ve 6 saatte bir) yeni sürüm bulunursa, "Otomatik güncelle" açıksa
+///   sessizce indirilir ve bir sonraki açılışta kurulur; kapalıysa yalnızca haber verilir.
+/// Böylece kullanıcı bir Discord görüşmesinin ortasında bağlantısını kaybetmez.
 /// </summary>
 public sealed partial class UpdateViewModel : ObservableObject
 {
@@ -21,11 +23,13 @@ public sealed partial class UpdateViewModel : ObservableObject
     private string? _downloadedPath;
     private bool _loading = true;
 
-    [ObservableProperty] private bool _isAvailable;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(ShowBanner), nameof(TrayLabel))] private bool _isAvailable;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(ShowBanner))] private bool _isDismissed;
     [ObservableProperty] private bool _isDownloading;
-    [ObservableProperty] private bool _isReady;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(PrimaryLabel), nameof(TrayLabel))] private bool _isReady;
     [ObservableProperty] private double _progress;
     [ObservableProperty] private string _bannerText = "";
+    [ObservableProperty] private string _bannerDetail = "";
     [ObservableProperty] private string? _checkMessage;
     [ObservableProperty] private bool _autoUpdate;
 
@@ -33,7 +37,9 @@ public sealed partial class UpdateViewModel : ObservableObject
     public event Action<string>? RestartRequested;
 
     public bool CanCheck => UpdateService.CanCheck;
-    public string ActionLabel => IsReady ? "Yeniden başlat" : UpdateService.CanSelfUpdate ? "Güncelle" : "İndir";
+    public bool ShowBanner => IsAvailable && !IsDismissed;
+    public string PrimaryLabel => !UpdateService.CanSelfUpdate ? "İndir" : IsReady ? "Şimdi kur" : "Şimdi yükle";
+    public string TrayLabel => _info is null ? "" : IsReady ? $"v{_info.Version} güncellemesini kur" : $"v{_info.Version} güncellemesini yükle";
 
     public UpdateViewModel(AppSettings settings)
     {
@@ -41,8 +47,6 @@ public sealed partial class UpdateViewModel : ObservableObject
         _autoUpdate = settings.AutoUpdate;
         _loading = false;
     }
-
-    partial void OnIsReadyChanged(bool value) => OnPropertyChanged(nameof(ActionLabel));
 
     partial void OnAutoUpdateChanged(bool value)
     {
@@ -71,9 +75,16 @@ public sealed partial class UpdateViewModel : ObservableObject
 
     private async Task CheckCoreAsync(bool manual)
     {
-        if (IsDownloading || IsReady) return;
-        if (manual) CheckMessage = "Denetleniyor…";
+        if (IsDownloading) return;
 
+        // Zaten bulunmuş bir güncelleme varsa yeniden sormaya gerek yok; kapatılmış bandı tekrar göster.
+        if (IsAvailable)
+        {
+            if (manual) IsDismissed = false;
+            return;
+        }
+
+        if (manual) CheckMessage = "Denetleniyor…";
         try
         {
             var info = await UpdateService.CheckAsync();
@@ -84,11 +95,12 @@ public sealed partial class UpdateViewModel : ObservableObject
             }
 
             _info = info;
-            IsAvailable = true;
-            BannerText = $"Yeni sürüm hazır: v{info.Version}";
             CheckMessage = null;
+            IsDismissed = false;
+            ShowAvailable();
+            IsAvailable = true;
 
-            if (AutoUpdate && UpdateService.CanSelfUpdate) await DownloadAsync();
+            if (!manual && AutoUpdate && UpdateService.CanSelfUpdate) await DownloadAsync();
         }
         catch (Exception)
         {
@@ -97,6 +109,7 @@ public sealed partial class UpdateViewModel : ObservableObject
         }
     }
 
+    /// <summary>İndirilmemişse indirir, sonra kurup uygulamayı yeniden başlatır.</summary>
     [RelayCommand]
     private async Task UpdateNowAsync()
     {
@@ -104,12 +117,27 @@ public sealed partial class UpdateViewModel : ObservableObject
 
         if (!UpdateService.CanSelfUpdate)
         {
-            OpenReleasePage();
+            Shell.OpenUrl(_info.ReleaseUrl);
             return;
         }
 
+        IsDismissed = false;
         if (!IsReady) await DownloadAsync();
-        if (IsReady && _downloadedPath is not null) RestartRequested?.Invoke(_downloadedPath);
+        if (IsReady && _downloadedPath is not null)
+        {
+            BannerText = $"v{_info.Version} kuruluyor…";
+            BannerDetail = "Uygulama birkaç saniye içinde yeniden açılacak.";
+            RestartRequested?.Invoke(_downloadedPath);
+        }
+    }
+
+    [RelayCommand]
+    private void Dismiss() => IsDismissed = true;
+
+    [RelayCommand]
+    private void OpenReleaseNotes()
+    {
+        if (_info is not null) Shell.OpenUrl(_info.ReleaseUrl);
     }
 
     private async Task DownloadAsync()
@@ -118,16 +146,19 @@ public sealed partial class UpdateViewModel : ObservableObject
         IsDownloading = true;
         Progress = 0;
         BannerText = $"v{_info.Version} indiriliyor…";
+        BannerDetail = "İndirme bitene kadar uygulamayı kullanmaya devam edebilirsiniz.";
         try
         {
             var progress = new Progress<double>(p => Progress = p * 100);
             _downloadedPath = await UpdateService.DownloadAsync(_info, progress);
             IsReady = true;
-            BannerText = $"v{_info.Version} indirildi";
+            BannerText = $"EngelsizDPI v{_info.Version} kurulmaya hazır";
+            BannerDetail = "Bir sonraki açılışta kendiliğinden kurulur. İsterseniz şimdi kurabilirsiniz; bağlantı birkaç saniye kesilir.";
         }
         catch (Exception e)
         {
-            BannerText = "Güncelleme indirilemedi: " + e.Message;
+            ShowAvailable();
+            BannerDetail = "İndirilemedi: " + e.Message;
         }
         finally
         {
@@ -135,15 +166,19 @@ public sealed partial class UpdateViewModel : ObservableObject
         }
     }
 
+    private void ShowAvailable()
+    {
+        BannerText = $"EngelsizDPI v{_info!.Version} mevcut";
+        BannerDetail = UpdateService.CanSelfUpdate
+            ? "Şimdi yükleyebilir ya da istediğiniz zaman tepsi menüsünden yükleyebilirsiniz."
+            : "Yeni sürümü indirme sayfasından alabilirsiniz.";
+    }
+
     public void ReportApplyFailure(Exception e)
     {
         IsReady = false;
         _downloadedPath = null;
-        BannerText = "Güncelleme uygulanamadı: " + e.Message;
-    }
-
-    private void OpenReleasePage()
-    {
-        if (_info is not null) Shell.OpenUrl(_info.ReleaseUrl);
+        ShowAvailable();
+        BannerDetail = "Kurulamadı: " + e.Message;
     }
 }

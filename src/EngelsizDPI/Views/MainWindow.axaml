@@ -201,15 +201,19 @@
         </Grid>
       </Border>
 
-      <Border Classes="card" Margin="0,16,0,0" Padding="14,10" IsVisible="{Binding Update.IsAvailable}">
-        <StackPanel Spacing="8">
-          <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Text="{Binding Update.BannerText}" TextWrapping="Wrap" FontSize="12" VerticalAlignment="Center" />
-            <Button Grid.Column="1" Classes="accent" Margin="10,0,0,0" Content="{Binding Update.ActionLabel}"
-                    Command="{Binding Update.UpdateNowCommand}" IsEnabled="{Binding !Update.IsDownloading}" />
-          </Grid>
+      <Border Classes="card" Margin="0,16,0,0" Padding="16,14" IsVisible="{Binding Update.ShowBanner}">
+        <StackPanel Spacing="10">
+          <StackPanel Spacing="3">
+            <TextBlock Text="{Binding Update.BannerText}" FontWeight="SemiBold" TextWrapping="Wrap" />
+            <TextBlock Classes="muted" Text="{Binding Update.BannerDetail}" TextWrapping="Wrap" />
+          </StackPanel>
           <ProgressBar IsVisible="{Binding Update.IsDownloading}" Value="{Binding Update.Progress}" Maximum="100"
                        Height="3" MinHeight="3" Foreground="{DynamicResource AccentBrush}" />
+          <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding !Update.IsDownloading}">
+            <Button Classes="accent" Content="{Binding Update.PrimaryLabel}" Command="{Binding Update.UpdateNowCommand}" />
+            <Button Classes="link quiet" Content="Sonra" Command="{Binding Update.DismissCommand}" />
+            <Button Classes="link quiet" Content="Neler yeni?" Command="{Binding Update.OpenReleaseNotesCommand}" />
+          </StackPanel>
         </StackPanel>
       </Border>
 

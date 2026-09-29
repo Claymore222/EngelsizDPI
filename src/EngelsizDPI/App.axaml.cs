@@ -81,7 +81,11 @@ public partial class App : Application
         showItem.Click += (_, _) => ShowWindow();
 
         _updateItem = new NativeMenuItem("Güncelle") { IsVisible = false };
-        _updateItem.Click += (_, _) => _vm.Update.UpdateNowCommand.Execute(null);
+        _updateItem.Click += (_, _) =>
+        {
+            ShowWindow();
+            _vm.Update.UpdateNowCommand.Execute(null);
+        };
 
         var exitItem = new NativeMenuItem("Çıkış");
         exitItem.Click += async (_, _) => await ExitAsync();
@@ -117,8 +121,8 @@ public partial class App : Application
     private void OnUpdateChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (_updateItem is null || _vm is null) return;
-        _updateItem.IsVisible = _vm.Update.IsAvailable;
-        _updateItem.Header = $"{_vm.Update.BannerText} — {_vm.Update.ActionLabel}";
+        _updateItem.IsVisible = _vm.Update.IsAvailable && UpdateService.CanSelfUpdate;
+        _updateItem.Header = _vm.Update.TrayLabel;
     }
 
     /// <summary>Motoru durdurur, exe'yi yeni sürümle değiştirir ve yeni sürümü aynı durumda başlatır.</summary>
