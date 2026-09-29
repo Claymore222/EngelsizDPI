@@ -2,6 +2,7 @@ using EngelsizDPI.Core;
 
 namespace EngelsizDPI.Tests;
 
+[System.Runtime.Versioning.SupportedOSPlatform("windows")]
 public sealed class InstallerTests
 {
     private const string Installed = @"C:\Program Files\EngelsizDPI\EngelsizDPI.exe";

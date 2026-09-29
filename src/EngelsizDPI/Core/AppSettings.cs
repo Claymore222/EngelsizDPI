@@ -19,6 +19,9 @@ public sealed class AppSettings
     public bool ConnectOnLaunch { get; set; } = true;
     public bool AutoUpdate { get; set; } = true;
 
+    /// <summary>"system", "light" ya da "dark" (bkz. <see cref="AppTheme"/>).</summary>
+    public string Theme { get; set; } = AppTheme.System;
+
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
     public static AppSettings Load()

@@ -20,7 +20,13 @@ public sealed partial class PackItem(SitePack pack, bool enabled, bool isCustom 
     public string Subtitle => IsCustom ? "Özel site" : $"{Pack.Category} · {Pack.Domains.Count} alan adı";
 
     [ObservableProperty] private bool _enabled = enabled;
-    [ObservableProperty] private PackStatus _status;
+
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(IsOpen), nameof(IsTesting), nameof(IsBlocked))]
+    private PackStatus _status;
+
+    public bool IsOpen => Status == PackStatus.Open;
+    public bool IsTesting => Status == PackStatus.Testing;
+    public bool IsBlocked => Status == PackStatus.Blocked;
 
     public bool Matches(string query) =>
         query.Length == 0 ||
@@ -45,8 +51,12 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly SemaphoreSlim _gate = new(1, 1);
     private bool _loading = true;
 
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(IsConnected), nameof(ToggleLabel), nameof(SwitchOn))]
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsConnected), nameof(ToggleLabel), nameof(SwitchOn), nameof(StateOn), nameof(StateBusy), nameof(StateError))]
     private ConnectionState _state = ConnectionState.Off;
+
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(IsThemeSystem), nameof(IsThemeLight), nameof(IsThemeDark))]
+    private string _theme;
 
     [ObservableProperty] private string _statusText = "Bağlı değil";
     [ObservableProperty] private string _statusDetail = "Başlatmak için anahtarı açın";
@@ -81,6 +91,15 @@ public sealed partial class MainViewModel : ObservableObject
 
     public bool IsConnected => State is ConnectionState.On or ConnectionState.Warning;
     public bool SwitchOn => State is ConnectionState.On or ConnectionState.Warning or ConnectionState.Busy;
+
+    // Arayüz renkleri bu bayraklara göre stil sınıflarıyla seçilir (temaya duyarlı).
+    public bool StateOn => State is ConnectionState.On or ConnectionState.Warning;
+    public bool StateBusy => State == ConnectionState.Busy;
+    public bool StateError => State == ConnectionState.Error;
+
+    public bool IsThemeSystem => Theme == AppTheme.System;
+    public bool IsThemeLight => Theme == AppTheme.Light;
+    public bool IsThemeDark => Theme == AppTheme.Dark;
     public bool HasConflict => ConflictText is not null;
     public bool HasNotice => Notice is not null;
     public bool HasScanResults => ScanResults.Count > 0;
@@ -98,6 +117,7 @@ public sealed partial class MainViewModel : ObservableObject
         _dnsRedirect = settings.DnsRedirect;
         _connectOnLaunch = settings.ConnectOnLaunch;
         _startWithWindows = SafeAutoStartState();
+        _theme = AppTheme.Normalize(settings.Theme);
 
         RebuildPacks();
         ScanResults.CollectionChanged += (_, _) => OnPropertyChanged(nameof(HasScanResults));
@@ -289,6 +309,15 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     // ---- Ayarlar ----
+
+    [RelayCommand]
+    private void SetTheme(string theme)
+    {
+        Theme = AppTheme.Normalize(theme);
+        _settings.Theme = Theme;
+        _settings.Save();
+        AppTheme.Apply(Theme);
+    }
 
     partial void OnSelectedProfileChanged(BypassProfile value)
     {

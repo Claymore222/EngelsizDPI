@@ -35,7 +35,9 @@ public partial class App : Application
             try { _engine = EngineFactory.Create(); }
             catch (PlatformNotSupportedException) { _engine = null; }
 
-            _vm = new MainViewModel(_engine, AppSettings.Load());
+            var settings = AppSettings.Load();
+            AppTheme.Apply(settings.Theme);
+            _vm = new MainViewModel(_engine, settings);
             _vm.PropertyChanged += OnViewModelChanged;
             _window = new MainWindow { DataContext = _vm };
 
