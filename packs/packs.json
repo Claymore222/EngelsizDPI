@@ -1,5 +1,5 @@
 {
-  "revision": 2,
+  "revision": 3,
   "packs": [
     {
       "id": "discord",
@@ -83,17 +83,6 @@
         "4chan.org",
         "4cdn.org",
         "4channel.org"
-      ]
-    },
-    {
-      "id": "voa",
-      "name": "Amerika'nın Sesi",
-      "category": "Haber",
-      "default": false,
-      "test": "https://www.voaturkce.com/",
-      "domains": [
-        "voaturkce.com",
-        "amerikaninsesi.com"
       ]
     }
   ]

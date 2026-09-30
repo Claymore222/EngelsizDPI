@@ -50,6 +50,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly AppSettings _settings;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private bool _loading = true;
+    private bool _reconnectQueued;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsConnected), nameof(ToggleLabel), nameof(SwitchOn), nameof(StateOn), nameof(StateBusy), nameof(StateError))]
@@ -580,10 +581,27 @@ public sealed partial class MainViewModel : ObservableObject
         foreach (var p in Packs) p.Status = PackStatus.None;
     }
 
+    /// <summary>
+    /// Ayarı kaydeder ve bağlıysa motoru yeni listeyle yeniden başlatır. Yeniden bağlanma sürerken gelen
+    /// değişiklikler yok sayılmaz: sıraya tek bir yeniden bağlanma daha alınır ve o, en güncel listeyi kullanır.
+    /// </summary>
     private async void SaveAndReconnect()
     {
         _settings.Save();
-        if (IsConnected) await ConnectAsync();
+        if (_engine is null || !SwitchOn || _reconnectQueued) return;
+
+        _reconnectQueued = true;
+        await _gate.WaitAsync();
+        try
+        {
+            _reconnectQueued = false;
+            // Beklerken bağlantı kesilmiş ya da hata almış olabilir; o zaman yeniden başlatılmaz.
+            if (IsConnected) await ConnectCoreAsync(SelectedProfile);
+        }
+        finally
+        {
+            _gate.Release();
+        }
     }
 
     private void RefreshConflicts()
