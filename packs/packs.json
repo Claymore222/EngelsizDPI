@@ -1,5 +1,5 @@
 {
-  "revision": 1,
+  "revision": 2,
   "packs": [
     {
       "id": "discord",
@@ -39,6 +39,61 @@
       "test": "https://www.wattpad.com/",
       "domains": [
         "wattpad.com"
+      ]
+    },
+    {
+      "id": "pastebin",
+      "name": "Pastebin",
+      "category": "Araçlar",
+      "default": false,
+      "test": "https://pastebin.com/",
+      "domains": [
+        "pastebin.com"
+      ]
+    },
+    {
+      "id": "rentry",
+      "name": "Rentry",
+      "category": "Araçlar",
+      "default": false,
+      "test": "https://rentry.co/",
+      "domains": [
+        "rentry.co",
+        "rentry.org"
+      ]
+    },
+    {
+      "id": "postimages",
+      "name": "Postimages",
+      "category": "Görsel",
+      "default": false,
+      "test": "https://postimg.cc/",
+      "domains": [
+        "postimg.cc",
+        "postimages.org"
+      ]
+    },
+    {
+      "id": "4chan",
+      "name": "4chan",
+      "category": "Forum",
+      "default": false,
+      "test": "https://boards.4chan.org/",
+      "domains": [
+        "4chan.org",
+        "4cdn.org",
+        "4channel.org"
+      ]
+    },
+    {
+      "id": "voa",
+      "name": "Amerika'nın Sesi",
+      "category": "Haber",
+      "default": false,
+      "test": "https://www.voaturkce.com/",
+      "domains": [
+        "voaturkce.com",
+        "amerikaninsesi.com"
       ]
     }
   ]
