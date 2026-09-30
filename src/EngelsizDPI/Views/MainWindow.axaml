@@ -182,15 +182,19 @@
     <StackPanel Margin="20,18,20,20">
 
       <!-- Başlık -->
-      <StackPanel Orientation="Horizontal" Spacing="12">
+      <Grid ColumnDefinitions="Auto,*,Auto">
         <Border Width="32" Height="32" CornerRadius="7" Background="{DynamicResource AccentBrush}">
           <PathIcon Width="18" Height="18" Foreground="{DynamicResource OnAccentBrush}" Data="{DynamicResource ShieldIcon}" />
         </Border>
-        <StackPanel VerticalAlignment="Center">
+        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
           <TextBlock Text="EngelsizDPI" FontSize="16" FontWeight="SemiBold" />
           <TextBlock Classes="muted" Text="GoodbyeDPI + güvenli DNS" />
         </StackPanel>
-      </StackPanel>
+        <!-- Güncelleme durumu: tıklayınca denetler; yeni sürüm varsa vurgu rengine döner ve bandı geri getirir. -->
+        <Button Grid.Column="2" Classes="link" Classes.quiet="{Binding !Update.IsAvailable}" FontSize="12"
+                VerticalAlignment="Center" Content="{Binding Update.StatusText}" Command="{Binding Update.CheckCommand}"
+                IsVisible="{Binding Update.CanCheck}" ToolTip.Tip="Güncellemeleri denetle" />
+      </Grid>
 
       <!-- Bilgi bantları -->
       <Border Classes="card" Margin="0,16,0,0" Padding="14,10" IsVisible="{Binding HasNotice}">
@@ -411,15 +415,11 @@
       </Border>
 
       <!-- Alt bilgi -->
-      <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="4,14,0,0">
+      <Grid ColumnDefinitions="Auto,*,Auto" Margin="4,14,0,0">
         <TextBlock Classes="muted" Text="{Binding AppVersion}" VerticalAlignment="Center" />
-        <Button Grid.Column="2" Classes="link quiet" FontSize="12" Content="Güncellemeleri denetle"
-                Command="{Binding Update.CheckCommand}" IsVisible="{Binding Update.CanCheck}" />
-        <Button Grid.Column="3" Classes="link quiet" FontSize="12" Content="Günlük" Command="{Binding OpenLogCommand}"
+        <Button Grid.Column="2" Classes="link quiet" FontSize="12" Content="Günlük" Command="{Binding OpenLogCommand}"
                 ToolTip.Tip="Sorun bildirirken bu dosyayı ekleyin" />
       </Grid>
-      <TextBlock Classes="muted" FontSize="11" Margin="4,4,0,0" TextWrapping="Wrap" Text="{Binding Update.CheckMessage}"
-                 IsVisible="{Binding Update.CheckMessage, Converter={x:Static ObjectConverters.IsNotNull}}" />
     </StackPanel>
   </ScrollViewer>
 </Window>

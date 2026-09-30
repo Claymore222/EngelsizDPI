@@ -30,7 +30,7 @@ public sealed partial class UpdateViewModel : ObservableObject
     [ObservableProperty] private double _progress;
     [ObservableProperty] private string _bannerText = "";
     [ObservableProperty] private string _bannerDetail = "";
-    [ObservableProperty] private string? _checkMessage;
+    [ObservableProperty] private string _statusText = "Güncellemeleri denetle";
     [ObservableProperty] private bool _autoUpdate;
 
     /// <summary>İndirilmiş güncellemenin yolu; App bunu alıp uygulamayı yeniden başlatır.</summary>
@@ -84,18 +84,18 @@ public sealed partial class UpdateViewModel : ObservableObject
             return;
         }
 
-        if (manual) CheckMessage = "Denetleniyor…";
+        if (manual) StatusText = "Denetleniyor…";
         try
         {
             var info = await UpdateService.CheckAsync();
             if (info is null)
             {
-                if (manual) CheckMessage = $"En güncel sürümü kullanıyorsunuz (v{UpdateService.CurrentVersion}).";
+                StatusText = $"Güncel · v{UpdateService.CurrentVersion}";
                 return;
             }
 
             _info = info;
-            CheckMessage = null;
+            StatusText = $"v{info.Version} mevcut";
             IsDismissed = false;
             ShowAvailable();
             IsAvailable = true;
@@ -105,7 +105,7 @@ public sealed partial class UpdateViewModel : ObservableObject
         catch (Exception)
         {
             // Arka plan denetimindeki ağ hataları kullanıcıyı rahatsız etmemeli.
-            if (manual) CheckMessage = "Güncelleme sunucusuna ulaşılamadı.";
+            if (manual) StatusText = "Sunucuya ulaşılamadı";
         }
     }
 

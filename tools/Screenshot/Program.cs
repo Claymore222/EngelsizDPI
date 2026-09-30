@@ -53,7 +53,7 @@ Shot("add", vm =>
     vm.ScanResults.Add(new ScanSuggestion("redditstatic.com"));
     vm.Notice = "EngelsizDPI kuruldu. Artık Başlat menüsünden ve masaüstünden açabilirsiniz; indirdiğiniz dosyayı silebilirsiniz.";
 }, 1400);
-Shot("light-on", vm => Set(vm, ConnectionState.On, "Bağlı", "Standart yöntem · 3 site açık", PackStatus.Open, PackStatus.Open, PackStatus.None, PackStatus.Open), theme: AppTheme.Light);
+Shot("light-on", vm => { vm.Update.StatusText = "Güncel · v1.2.1"; Set(vm, ConnectionState.On, "Bağlı", "Standart yöntem · 3 site açık", PackStatus.Open, PackStatus.Open, PackStatus.None, PackStatus.Open); }, theme: AppTheme.Light);
 Shot("light-busy", vm => { Set(vm, ConnectionState.Busy, "Bağlanıyor…", "Siteler test ediliyor", PackStatus.Testing, PackStatus.Testing, PackStatus.None, PackStatus.Testing); vm.IsBusy = true; }, theme: AppTheme.Light);
 Shot("light-error", vm => { Set(vm, ConnectionState.Error, "Bağlanamadı", "WinDivert sürücüsü engellendi. (hata kodu 1275)"); vm.ConflictText = "Eski bir GoodbyeDPI servisi kurulu."; }, theme: AppTheme.Light);
 Shot("light-off", vm => Set(vm, ConnectionState.Off, "Bağlı değil", "Başlatmak için anahtarı açın"), theme: AppTheme.Light);
@@ -61,6 +61,7 @@ Shot("update-available", vm =>
 {
     Set(vm, ConnectionState.On, "Bağlı", "Standart yöntem · 3 site açık", PackStatus.Open, PackStatus.Open, PackStatus.None, PackStatus.Open);
     vm.Update.BannerText = "EngelsizDPI v1.3.0 mevcut";
+    vm.Update.StatusText = "v1.3.0 mevcut";
     vm.Update.BannerDetail = "Şimdi yükleyebilir ya da istediğiniz zaman tepsi menüsünden yükleyebilirsiniz.";
     vm.Update.IsAvailable = true;
 }, 900);
