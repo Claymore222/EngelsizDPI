@@ -70,9 +70,10 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>Kapatılabilir bilgi bandı (ör. kurulum tamamlandı).</summary>
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasNotice))] private string? _notice;
 
-    // Site listesi, arama ve ekleme paneli
+    // Site listesi, hazır paketler ve ekleme paneli
     [ObservableProperty] private string _searchText = "";
-    [ObservableProperty] private bool _isAddOpen;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(ShowListActions))] private bool _isAddOpen;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(ShowListActions))] private bool _isCatalogOpen;
     [ObservableProperty] private string _newDomain = "";
     [ObservableProperty] private string? _addMessage;
     [ObservableProperty] private bool _isScanning;
@@ -84,8 +85,14 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>Paketler ve özel siteler tek listede; özel siteler en altta.</summary>
     public ObservableCollection<PackItem> Packs { get; } = [];
 
-    /// <summary>Arama kutusuna göre süzülmüş liste (arayüz bunu gösterir).</summary>
+    /// <summary>Ana listede görünenler: açık paketler ve özel siteler.</summary>
     public ObservableCollection<PackItem> VisiblePacks { get; } = [];
+
+    /// <summary>"Hazır paketler" panelindeki, arama kutusuna göre süzülmüş katalog.</summary>
+    public ObservableCollection<PackItem> CatalogPacks { get; } = [];
+
+    /// <summary>Katalog açıkken yapılan değişiklikler; panel kapanınca tek seferde yeniden bağlanılır.</summary>
+    private bool _catalogDirty;
 
     public ObservableCollection<ScanSuggestion> ScanResults { get; } = [];
 
@@ -103,6 +110,9 @@ public sealed partial class MainViewModel : ObservableObject
     public bool HasConflict => ConflictText is not null;
     public bool HasNotice => Notice is not null;
     public bool HasScanResults => ScanResults.Count > 0;
+    public bool HasSites => VisiblePacks.Count > 0;
+    public bool HasCatalogMatches => CatalogPacks.Count > 0;
+    public bool ShowListActions => !IsAddOpen && !IsCatalogOpen;
     public string ToggleLabel => IsConnected ? "Bağlantıyı kes" : "Bağlan";
     public string AppVersion => "v" + UpdateService.CurrentVersion;
     public bool CanSuggest => UpdateService.Repo is not null;
@@ -179,16 +189,40 @@ public sealed partial class MainViewModel : ObservableObject
 
     private void ApplyFilter()
     {
+        RefreshVisible();
+
         var query = SearchText.Trim();
+        CatalogPacks.Clear();
+        foreach (var item in Packs.Where(p => !p.IsCustom && p.Matches(query))) CatalogPacks.Add(item);
+        OnPropertyChanged(nameof(HasCatalogMatches));
+    }
+
+    private void RefreshVisible()
+    {
         VisiblePacks.Clear();
-        foreach (var item in Packs.Where(p => p.Matches(query))) VisiblePacks.Add(item);
+        foreach (var item in Packs.Where(p => p.Enabled)) VisiblePacks.Add(item);
+        OnPropertyChanged(nameof(HasSites));
     }
 
     private void OnPackChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (_loading || e.PropertyName != nameof(PackItem.Enabled) || sender is not PackItem { IsCustom: false } item) return;
         _settings.SetPackEnabled(item.Pack, item.Enabled);
-        SaveAndReconnect();
+        if (!item.Enabled) item.Status = PackStatus.None;
+
+        // Katalog listesi yerinde kalır (anahtarı çevrilen satır kaybolmasın); yalnızca ana liste yenilenir.
+        RefreshVisible();
+
+        if (IsCatalogOpen)
+        {
+            // Art arda birkaç paket açılırken motor her seferinde yeniden başlamasın.
+            _settings.Save();
+            _catalogDirty = true;
+        }
+        else
+        {
+            SaveAndReconnect();
+        }
     }
 
     [RelayCommand]
@@ -196,6 +230,18 @@ public sealed partial class MainViewModel : ObservableObject
     {
         IsAddOpen = !IsAddOpen;
         AddMessage = null;
+    }
+
+    [RelayCommand]
+    private void ToggleCatalog()
+    {
+        IsCatalogOpen = !IsCatalogOpen;
+        if (IsCatalogOpen) return;
+
+        SearchText = "";
+        if (!_catalogDirty) return;
+        _catalogDirty = false;
+        SaveAndReconnect();
     }
 
     [RelayCommand]
@@ -284,10 +330,15 @@ public sealed partial class MainViewModel : ObservableObject
         SaveAndReconnect();
     }
 
+    /// <summary>Ana listeden çıkarır: hazır paket kapatılır (katalogdan geri açılabilir), özel site silinir.</summary>
     [RelayCommand]
-    private void RemoveCustom(PackItem item)
+    private void Remove(PackItem item)
     {
-        if (!item.IsCustom) return;
+        if (!item.IsCustom)
+        {
+            item.Enabled = false;
+            return;
+        }
         item.PropertyChanged -= OnPackChanged;
         _settings.CustomDomains.Remove(item.Pack.Domains[0]);
         Packs.Remove(item);
