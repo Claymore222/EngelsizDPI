@@ -20,9 +20,10 @@ public static class Palette
 
     public static Color For(ConnectionState state) => state switch
     {
-        ConnectionState.On or ConnectionState.Warning => Accent,
+        ConnectionState.On => Accent,
         ConnectionState.Busy => Busy,
-        ConnectionState.Error => Error,
+        // "Kısmen açık" da dikkat ister: pencere kapalıyken kullanıcı bunu yalnızca tepsiden görür.
+        ConnectionState.Error or ConnectionState.Warning => Error,
         _ => Muted,
     };
 }

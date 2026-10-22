@@ -16,9 +16,6 @@ public sealed class GoodbyeDpiEngine : IBypassEngine
     private const string LegacyServiceName = "GoodbyeDPI";
     private const string LegacyStartupTask = "DNSChangerApp_Startup";
 
-    // Yandex DNS'in standart dışı portu: bazı ISS'ler 53. porttaki DNS trafiğini ele geçirir.
-    private const string DnsV4 = "77.88.8.8", DnsV6 = "2a02:6b8::feed:0ff", DnsPort = "1253";
-
     private readonly KillOnCloseJob _job = new();
     private readonly WinDivertKeepAlive _driver = new();
     private readonly Queue<string> _output = new();
@@ -59,7 +56,8 @@ public sealed class GoodbyeDpiEngine : IBypassEngine
             psi.ArgumentList.Add(arg);
         if (options.DnsRedirect)
         {
-            foreach (var arg in new[] { "--dns-addr", DnsV4, "--dns-port", DnsPort, "--dnsv6-addr", DnsV6, "--dnsv6-port", DnsPort })
+            foreach (var arg in new[] { "--dns-addr", SecureDns.ServerV4, "--dns-port", $"{SecureDns.Port}",
+                                  "--dnsv6-addr", SecureDns.ServerV6, "--dnsv6-port", $"{SecureDns.Port}" })
                 psi.ArgumentList.Add(arg);
         }
         if (options.Hosts.Count > 0)

@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Net.NetworkInformation;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -51,6 +52,18 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly SemaphoreSlim _gate = new(1, 1);
     private bool _loading = true;
     private bool _reconnectQueued;
+
+    // Sağlık denetimi (bkz. HealthLoopAsync)
+    private static readonly TimeSpan HealthInterval = TimeSpan.FromMinutes(5);
+    private DateTime _lastHealthCheck = DateTime.UtcNow;
+    private DateTime _networkChangedAt = DateTime.MinValue;
+
+    /// <summary>Çalışan motor güvenli DNS yönlendirmesiyle mi başlatıldı (sunucu düşükse yönlendirme kapatılır).</summary>
+    private bool _secureDnsActive;
+
+    private const string DnsFallbackNotice =
+        "Güvenli DNS'e (Yandex) şu an ulaşılamıyor. İnternetiniz kesilmesin diye bu bağlantıda normal DNS kullanılıyor; " +
+        "sunucu düzelince kendiliğinden geri geçilir.";
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsConnected), nameof(ToggleLabel), nameof(SwitchOn), nameof(StateOn), nameof(StateBusy), nameof(StateError))]
@@ -158,7 +171,9 @@ public sealed partial class MainViewModel : ObservableObject
     /// <summary>Oturum açılışında / uygulama başlarken ayar açıksa bağlanır.</summary>
     public async Task StartupAsync()
     {
-        if (!(ConnectOnLaunch || Program.ForceConnect) || _engine is null) return;
+        if (_engine is null) return;
+        _ = HealthLoopAsync();
+        if (!(ConnectOnLaunch || Program.ForceConnect)) return;
 
         // Oturum açılışında ağ bağdaştırıcısı birkaç saniye geç hazır olabilir; aksi halde test boşuna başarısız olur.
         for (var i = 0; i < 30 && !System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable(); i++)
@@ -451,32 +466,130 @@ public sealed partial class MainViewModel : ObservableObject
         await _gate.WaitAsync();
         try
         {
-            BypassProfile? best = null, lastTried = null;
-            var bestScore = -1;
-            for (var i = 0; i < Profiles.Count; i++)
-            {
-                lastTried = Profiles[i];
-                var score = await ConnectCoreAsync(lastTried, $"{lastTried.Name} deneniyor ({i + 1}/{Profiles.Count})");
-                if (score > bestScore) (best, bestScore) = (lastTried, score);
-                if (score == ActivePacks().Count) break;
-            }
-
-            if (best is null) return;
-            if (best != SelectedProfile)
-            {
-                _loading = true;
-                SelectedProfile = best;
-                _loading = false;
-                _settings.ProfileId = best.Id;
-                _settings.Save();
-            }
-            // Döngü tam başarı olmadan bittiyse motor son denenen yöntemle çalışıyordur.
-            if (best != lastTried) await ConnectCoreAsync(best);
+            await AutoFindCoreAsync();
         }
         finally
         {
             _gate.Release();
         }
+    }
+
+    private async Task AutoFindCoreAsync()
+    {
+        BypassProfile? best = null, lastTried = null;
+        var bestScore = -1;
+        for (var i = 0; i < Profiles.Count; i++)
+        {
+            lastTried = Profiles[i];
+            var score = await ConnectCoreAsync(lastTried, $"{lastTried.Name} deneniyor ({i + 1}/{Profiles.Count})");
+            if (score > bestScore) (best, bestScore) = (lastTried, score);
+            if (score == ActivePacks().Count) break;
+        }
+
+        if (best is null) return;
+        if (best != SelectedProfile)
+        {
+            _loading = true;
+            SelectedProfile = best;
+            _loading = false;
+            _settings.ProfileId = best.Id;
+            _settings.Save();
+        }
+        // Döngü tam başarı olmadan bittiyse motor son denenen yöntemle çalışıyordur.
+        if (best != lastTried) await ConnectCoreAsync(best);
+    }
+
+    // ---- Sağlık denetimi ----
+
+    /// <summary>
+    /// Bağlıyken siteleri 5 dakikada bir, ağ değişince ve uykudan uyanınca sessizce yeniden test eder. Siteler
+    /// yalnızca bağlanırken test edilseydi operatör yöntemi değiştirdiğinde ya da ağ değiştiğinde anahtar "Bağlı"
+    /// dediği hâlde siteler açılmazdı.
+    /// </summary>
+    private async Task HealthLoopAsync()
+    {
+        NetworkChange.NetworkAddressChanged += (_, _) => _networkChangedAt = DateTime.UtcNow;
+
+        // Arayüz iş parçacığında çalışır: zamanlayıcının devamı oraya döner, durum değişiklikleri güvenlidir.
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(15));
+        var lastTick = DateTime.UtcNow;
+        while (await timer.WaitForNextTickAsync())
+        {
+            var now = DateTime.UtcNow;
+            // Zamanlayıcı uzun süre çalışmadıysa bilgisayar uykudaydı.
+            var reason = now - lastTick > TimeSpan.FromMinutes(1) ? "uykudan uyanma"
+                // Ağ değişikliğinden sonra bağlantının oturması beklenir.
+                : _networkChangedAt > _lastHealthCheck && now - _networkChangedAt > TimeSpan.FromSeconds(10) ? "ağ değişti"
+                : now - _lastHealthCheck >= HealthInterval ? "periyodik"
+                : null;
+            lastTick = now;
+            if (reason is not null) await HealthCheckAsync(reason);
+        }
+    }
+
+    /// <summary>
+    /// Yalnızca bozulmaya tepki verir: daha önce açık olan bir site kapandıysa ya da güvenli DNS'in durumu değiştiyse
+    /// yeniden bağlanır; yine olmazsa Otomatik bul'u dener. Baştan beri açılmayan bir site (ör. kapanmış bir
+    /// özel site) her denetimde motoru yeniden başlatmasın diye yok sayılır.
+    /// </summary>
+    private async Task HealthCheckAsync(string reason)
+    {
+        _lastHealthCheck = DateTime.UtcNow;
+        // Kullanıcı o sırada bağlanıyor ya da ayar değiştiriyorsa bu tur atlanır.
+        if (_engine is null || !IsConnected || !await _gate.WaitAsync(0)) return;
+        try
+        {
+            // İnternet yokken siteler de açılmaz; bu durumda bir şey değiştirilmez.
+            if (!await SecureDns.IsOnlineAsync()) return;
+
+            if (DnsRedirect && await SecureDns.IsReachableAsync(fresh: true) != _secureDnsActive)
+            {
+                Log.Write($"Sağlık denetimi ({reason}): güvenli DNS " +
+                          (_secureDnsActive ? "yanıt vermiyor" : "yeniden yanıt veriyor") + ", yeniden bağlanılıyor");
+                await ConnectCoreAsync(SelectedProfile);
+                return;
+            }
+
+            var wasOpen = ActivePacks().Where(p => p.Status == PackStatus.Open).ToList();
+            if (wasOpen.Count == 0) return;
+            var results = await ConnectivityTester.TestPacksAsync(wasOpen.Select(p => p.Pack));
+            var lost = wasOpen.Where(p => !results[p.Pack]).ToList();
+            if (lost.Count == 0) return;
+
+            Log.Write($"Sağlık denetimi ({reason}): {string.Join(", ", lost.Select(p => p.Name))} kapandı, yeniden bağlanılıyor");
+            await ConnectCoreAsync(SelectedProfile);
+            if (lost.All(p => p.Status == PackStatus.Open)) return;
+
+            Log.Write($"Sağlık denetimi: {SelectedProfile.Name} yöntemi artık açmıyor, Otomatik bul deneniyor");
+            await AutoFindCoreAsync();
+        }
+        catch (Exception e)
+        {
+            Log.Write("Sağlık denetimi hatası: " + e.Message);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    /// <summary>
+    /// Güvenli DNS'e ulaşılamıyorsa yönlendirme bu bağlantıda kapatılır; açık kalsaydı bilgisayarda hiçbir alan adı
+    /// çözülmezdi. İnternet hiç yokken karar verilmez (sağlık denetimi bağlantı gelince yeniden bakar).
+    /// </summary>
+    private async Task<bool> UseSecureDnsAsync()
+    {
+        if (!DnsRedirect) return false;
+        if (await SecureDns.IsReachableAsync())
+        {
+            if (Notice == DnsFallbackNotice) Notice = null;
+            return true;
+        }
+        if (!await SecureDns.IsOnlineAsync()) return true;
+
+        Log.Write("Güvenli DNS'e ulaşılamadı; bu bağlantıda normal DNS kullanılıyor");
+        Notice = DnsFallbackNotice;
+        return false;
     }
 
     [RelayCommand]
@@ -529,7 +642,9 @@ public sealed partial class MainViewModel : ObservableObject
 
         try
         {
-            await _engine!.StartAsync(new EngineOptions(profile, hosts, DnsRedirect));
+            var secureDns = await UseSecureDnsAsync();
+            await _engine!.StartAsync(new EngineOptions(profile, hosts, secureDns));
+            _secureDnsActive = secureDns;
 
             if (busyText is null) StatusDetail = "Siteler test ediliyor";
             var results = await ConnectivityTester.TestPacksAsync(active.Select(p => p.Pack));

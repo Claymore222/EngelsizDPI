@@ -132,16 +132,18 @@ Bir sorun bildirildiğinde ilk bakılacak yerler:
   "Kendi siteni ekle" taramasını kullanın. Alan adını `packs/packs.json`'daki paketin `domains` listesine
   ekleyin, `revision`'ı artırın ve push edin. Sürüm gerekmez.
 
-### 2.5 Operatör DNS'i farklı yoldan zehirliyor ya da Yandex 1253 engellendi — *olası*
+### 2.5 Yandex 1253 düştü ya da engellendi — *v1.3.2'den itibaren kendiliğinden idare ediliyor*
 
-- **Belirti:** Bağlıyken **bütün** internet çalışmıyor ya da çok yavaş. Bağlantıyı kesince düzeliyor.
-- **Neden:** "Güvenli DNS" açıkken goodbyedpi tüm 53. port DNS sorgularını `77.88.8.8:1253`'e yönlendirir.
-  Bu sunucuya ulaşılamazsa hiçbir alan adı çözülmez.
-- **Hemen:** Ayarlar → Güvenli DNS kapat.
-- **Kalıcı:** `GoodbyeDpiEngine.cs` içindeki `DnsV4/DnsV6/DnsPort` sabitlerini değiştirin. Standart dışı port
-  sunan bir alternatif bulun ve **önce kullanıcı hattında doğrulayın**. Örneğin AdGuard DNS'in 5353 portu
-  aday olabilir; doğrulanmadı. Daha iyi çözüm: bağlanırken DNS sunucusunu test etmek, yanıt vermiyorsa
-  yönlendirmeyi kapatıp kullanıcıyı uyarmak.
+- **Eski belirti:** Bağlıyken **bütün** internet gidiyordu. "Güvenli DNS" açıkken bütün DNS sorguları
+  `77.88.8.8:1253`'e yönlendirildiği için sunucu yanıt vermezse hiçbir alan adı çözülmüyordu.
+- **Şimdi:** Bağlanmadan önce sunucuya gerçek bir sorgu gönderilir. Yanıt yoksa bağlantı yönlendirmesiz kurulur
+  ve "Güvenli DNS'e ulaşılamıyor…" bandı çıkar. Sağlık denetimi sunucu düzelince geri geçer, bağlıyken düşerse
+  yönlendirmeyi kapatır. Günlükte `Güvenli DNS'e ulaşılamadı` / `güvenli DNS yanıt vermiyor` satırları görünür.
+- **Hâlâ olabilecek:** Yönlendirmesiz bağlantıda operatör DNS'i zehirliyorsa engelli siteler açılmayabilir.
+  Kalıcı çözüm için `SecureDns.cs` içindeki `ServerV4/ServerV6/Port` sabitlerine standart dışı port sunan başka
+  bir sunucu (ya da yedek sunucu listesi) eklenebilir. **Önce kullanıcı hattında doğrulayın.** AdGuard DNS'in
+  5353 portu aday olabilir; doğrulanmadı.
+- **Elle kontrol:** `nslookup -port=1253 discord.com 77.88.8.8`
 
 ---
 
@@ -213,13 +215,20 @@ Bir sorun bildirildiğinde ilk bakılacak yerler:
 
 ## 4. Bağlantı testi ve arayüz durumu
 
-### 4.1 Anahtar "Bağlı" ama site açılmıyor — *bilinen eksik*
+### 4.1 Anahtar "Bağlı" ama site açılmıyor — *v1.3.2'den itibaren sağlık denetimi var*
 
-- **Neden:** Test yalnızca bağlanırken yapılır. Sonradan operatör davranışı değişirse, bilgisayar uykudan
-  uyanır ya da ağ değişirse uygulama bunu fark etmez.
-- **Geçici:** Anahtarı kapatıp açmak (yeniden test eder) ya da Otomatik bul.
-- **İyileştirme önerisi:** Arka planda periyodik ve ağ değişikliğinde (`NetworkChange.NetworkAddressChanged`,
-  güç olayları) yeniden test etmek. Kapalıysa sessizce yeniden bağlanmak, olmazsa tepside uyarmak.
+- **Eski neden:** Siteler yalnızca bağlanırken test ediliyordu; uykudan uyanma, ağ değişikliği ya da operatörün
+  yöntem değiştirmesi fark edilmiyordu.
+- **Şimdi:** Bağlıyken 5 dakikada bir, ağ değişince ve uykudan uyanınca daha önce açık olan siteler sessizce
+  test edilir. Kapanan varsa yeniden bağlanılır, olmazsa Otomatik bul çalışır. Hâlâ açılmıyorsa durum
+  "Kısmen açık" olur ve tepsi ikonu hata rengine döner. Günlükte `Sağlık denetimi (...)` satırları görünür.
+- **Hâlâ olabilecek:**
+  - Denetimler arasındaki en fazla 5 dakikada site kapalı kalabilir; anahtarı kapatıp açmak hemen yeniden test
+    eder.
+  - goodbyedpi tamamen çökerse durum "Bağlantı koptu" olur ve sağlık denetimi kendiliğinden yeniden bağlanmaz
+    (yalnızca bağlıyken çalışır). Gerekirse `UnexpectedExit`'te bir kez otomatik yeniden bağlanma eklenebilir.
+  - Kesintili bir ağda, denetim internet var dedikten hemen sonra bağlantı giderse gereksiz bir yeniden bağlanma
+    olabilir; zararı birkaç saniyelik kesintidir.
 
 ### 4.2 Site tarayıcıda açılıyor ama uygulama "kapalı" diyor (ya da tersi) — *olası*
 
@@ -254,15 +263,14 @@ Bir sorun bildirildiğinde ilk bakılacak yerler:
 ### 5.1 "Sunucuya ulaşılamadı" / güncelleme hiç gelmiyor — *olası*
 
 - **Nedenler:**
-  - **GitHub API sınırı:** Kimliksiz istekler IP başına saatte 60. Türkiye'de CGNAT ile çok kullanıcı aynı IP'yi
-    paylaşabilir ve 403 alınır.
-  - `api.github.com` erişime kapatılmış ya da yavaş.
+  - **GitHub API sınırı** (kimliksiz istekler IP başına saatte 60; CGNAT'ta dolabilir) ya da `api.github.com`
+    erişilemiyor. v1.3.2'den itibaren bu durumda `github.com/<repo>/releases/latest` yönlendirmesinden okunur.
+    Günlükte `Güncelleme API'si kullanılamadı, sürüm sayfasından denenecek` görünür. İkisi de başarısızsa
+    "Sunucuya ulaşılamadı" çıkar.
+  - `github.com`'un kendisine erişilemiyor (indirme de oradan yapıldığı için güncelleme mümkün değil).
   - Release taslak ya da ön sürüm olarak yayınlanmış (`/releases/latest` görmez).
   - Varlık adı tam olarak `EngelsizDPI.exe` değil ya da `.sha256`/digest yok. Doğrulanamayan güncelleme
     bilerek yok sayılır.
-- **Çözüm önerisi (sınır için):** API yerine `https://github.com/<repo>/releases/latest` adresine istek atıp
-  yönlendirilen `.../tag/vX.Y.Z` adresinden sürümü okumak (rate limit yok). İndirme adresi
-  `.../releases/download/vX.Y.Z/EngelsizDPI.exe` ve `.sha256` sabit kalıptan üretilebilir.
 
 ### 5.2 Bozuk bir sürüm yayınlandı — *v1.3.1'den itibaren kendiliğinden toparlanır, yine de dikkat*
 

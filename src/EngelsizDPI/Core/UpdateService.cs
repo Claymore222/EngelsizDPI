@@ -27,6 +27,8 @@ public static class UpdateService
 
     // CurrentVersion'dan sonra tanımlanmalı: statik alanlar yazıldıkları sırayla başlatılır.
     private static readonly HttpClient Http = CreateClient();
+    private static readonly HttpClient NoRedirectHttp = CreateClient(new SocketsHttpHandler { AllowAutoRedirect = false });
+    private static readonly TimeSpan CheckTimeout = TimeSpan.FromSeconds(20);
 
     /// <summary>
     /// Yalnızca yayınlanmış tek dosyalık exe kendini değiştirebilir; `dotnet run` ile geliştirme sırasında
@@ -55,16 +57,63 @@ public static class UpdateService
     {
         if (Repo is null) return null;
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{Repo}/releases/latest");
+        UpdateInfo? info;
+        try
+        {
+            info = await CheckWithApiAsync(Repo, ct);
+        }
+        catch (Exception e) when (e is HttpRequestException or JsonException or KeyNotFoundException or InvalidOperationException ||
+                                  e is TaskCanceledException && !ct.IsCancellationRequested)
+        {
+            // GitHub API'si kimliksiz isteklere IP başına saatte 60 hak tanır; aynı IP'yi paylaşan çok kullanıcıda
+            // (CGNAT) bu dolabilir. Sürüm sayfasının yönlendirmesi bu sınıra tabi değildir.
+            Log.Write("Güncelleme API'si kullanılamadı, sürüm sayfasından denenecek: " + e.Message);
+            info = await CheckWithRedirectAsync(Repo, ct);
+        }
+        return info is not null && IsSkipped(info.Version) ? null : info;
+    }
+
+    private static async Task<UpdateInfo?> CheckWithApiAsync(string repo, CancellationToken ct)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(CheckTimeout);
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{repo}/releases/latest");
         request.Headers.Accept.ParseAdd("application/vnd.github+json");
-        using var response = await Http.SendAsync(request, ct);
+        using var response = await Http.SendAsync(request, timeout.Token);
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return null; // Henüz hiç sürüm yok.
         response.EnsureSuccessStatusCode();
 
-        await using var stream = await response.Content.ReadAsStreamAsync(ct);
-        using var json = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
-        var info = ParseRelease(json.RootElement, CurrentVersion);
-        return info is not null && IsSkipped(info.Version) ? null : info;
+        await using var stream = await response.Content.ReadAsStreamAsync(timeout.Token);
+        using var json = await JsonDocument.ParseAsync(stream, cancellationToken: timeout.Token);
+        return ParseRelease(json.RootElement, CurrentVersion);
+    }
+
+    /// <summary>
+    /// github.com/&lt;depo&gt;/releases/latest, en son sürümün etiket sayfasına yönlendirir; sürüm oradan okunur.
+    /// İndirme ve .sha256 adresleri GitHub'ın sabit kalıbından üretilir (bkz. <see cref="ParseLatestRedirect"/>).
+    /// </summary>
+    private static async Task<UpdateInfo?> CheckWithRedirectAsync(string repo, CancellationToken ct)
+    {
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeout.CancelAfter(CheckTimeout);
+        using var response = await NoRedirectHttp.GetAsync($"https://github.com/{repo}/releases/latest",
+            HttpCompletionOption.ResponseHeadersRead, timeout.Token);
+        if ((int)response.StatusCode is < 300 or >= 400 || response.Headers.Location is not { } location)
+            throw new HttpRequestException($"Sürüm sayfası yönlendirmedi ({(int)response.StatusCode}).");
+        if (!location.IsAbsoluteUri) location = new Uri(new Uri("https://github.com/"), location);
+        return ParseLatestRedirect(repo, location, CurrentVersion);
+    }
+
+    /// <summary>".../releases/tag/v1.2.3" yönlendirmesini yorumlar; test edilebilsin diye ayrı tutuldu.</summary>
+    public static UpdateInfo? ParseLatestRedirect(string repo, Uri location, Version current)
+    {
+        var segments = location.AbsolutePath.TrimEnd('/').Split('/');
+        if (segments.Length < 2 || segments[^2] != "tag") return null; // Henüz hiç sürüm yok: /releases'e döner.
+        var tag = Uri.UnescapeDataString(segments[^1]);
+        if (!TryParseVersion(tag, out var version) || version <= current) return null;
+
+        var download = $"https://github.com/{repo}/releases/download/{Uri.EscapeDataString(tag)}/";
+        return new UpdateInfo(version, download + AssetName, null, download + ChecksumAssetName, location.AbsoluteUri);
     }
 
     /// <summary>Bu bilgisayarda açılamadığı için geri dönülen sürüm (bkz. <see cref="StartupHealth"/>).</summary>
@@ -256,9 +305,9 @@ public static class UpdateService
         return repo is { Length: > 0 } && repo.Count(c => c == '/') == 1 && !repo.StartsWith("KULLANICI") ? repo : null;
     }
 
-    private static HttpClient CreateClient()
+    private static HttpClient CreateClient(HttpMessageHandler? handler = null)
     {
-        var client = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
+        var client = new HttpClient(handler ?? new SocketsHttpHandler()) { Timeout = TimeSpan.FromMinutes(10) };
         client.DefaultRequestHeaders.UserAgent.ParseAdd($"EngelsizDPI/{CurrentVersion}");
         return client;
     }

@@ -119,6 +119,7 @@ src/EngelsizDPI/
     KillOnCloseJob.cs             Job Object: uygulama ölünce goodbyedpi da ölür
     IBypassEngine.cs              Motor arayüzü + EngineFactory
     ConnectivityTester.cs         Sitenin gerçekten açılıp açılmadığını ölçer
+    SecureDns.cs                  Güvenli DNS sunucusu sabitleri, sunucuyu sınama, internet var mı kontrolü
     Profiles.cs                   Yöntemler
     SitePacks.cs                  Paket kataloğu: ayrıştırma, doğrulama, uzaktan yenileme
     SiteScanner.cs                Eklenen sitenin kullandığı engelli alan adlarını bulur
@@ -301,6 +302,26 @@ göründüğü hâlde site açık kalıyordu.
 **Hazır paketler paneli** açıkken paket değişiklikleri yalnızca kaydedilir (`_catalogDirty`); "Tamam"a basınca
 tek seferde yeniden bağlanılır. Her tıklamada motor yeniden başlamaz.
 
+**Güvenli DNS sınaması:** Bağlanmadan önce `SecureDns.IsReachableAsync` Yandex'in 1253 portuna doğrudan (IP
+ile, DNS'e ihtiyaç duymadan) gerçek bir A sorgusu gönderir; sonuç 1 dakika önbellekte tutulur. Yanıt yoksa ve
+internet varsa (`IsOnlineAsync`: 1.1.1.1/8.8.8.8:443'e TCP) motor bu bağlantıda **DNS yönlendirmesi olmadan**
+başlatılır ve bilgi bandı gösterilir. Yönlendirme açık kalsaydı, bütün DNS sorguları ölü sunucuya gideceği için
+hiçbir site açılmazdı. Kullanıcının ayarı değişmez; sunucu düzelince sağlık denetimi geri geçer. İnternet hiç
+yokken karar verilmez.
+
+**Sağlık denetimi** (`HealthLoopAsync`, `HealthCheckAsync`): Bağlıyken 5 dakikada bir, ağ adresi değişince
+(10 sn oturma payıyla) ve uykudan uyanınca (zamanlayıcı 1 dakikadan uzun atladıysa) sessizce çalışır. Kullanıcı
+o anda bir işlem yapıyorsa (`_gate` meşgul) o tur atlanır.
+
+1. İnternet yoksa hiçbir şey yapılmaz.
+2. Güvenli DNS'in durumu motorun başlatıldığı durumdan farklıysa (düştü ya da düzeldi) yeniden bağlanılır.
+3. Yalnızca **daha önce açık olan** paketler yeniden test edilir. Biri kapandıysa aynı yöntemle yeniden
+   bağlanılır, yine kapalıysa Otomatik bul çalıştırılır. Baştan beri açılmayan paketler yok sayılır; ölü bir özel
+   site her 5 dakikada motoru yeniden başlatmasın.
+
+Tepsi ikonu "Kısmen açık" durumunda da hata rengine döner; pencere kapalıyken kullanıcı bunu yalnızca oradan
+görür.
+
 **Otomatik bul:** Bütün profilleri sırayla dener, en çok paketi açanı seçer, tamamı açılınca durur. Seçimi
 kaydeder; döngü tam başarı olmadan bittiyse motoru en iyi profille yeniden başlatır.
 
@@ -365,9 +386,14 @@ onu eski anlamına göre dönüştürür.
 
 `UpdateService` + `UpdateViewModel`.
 
-1. **Denetim:** `GET api.github.com/repos/<repo>/releases/latest`. Etiket `vX.Y.Z` mevcut sürümden büyükse ve
+1. **Denetim:** `GET api.github.com/repos/<repo>/releases/latest` (20 sn zaman aşımı). Etiket `vX.Y.Z` mevcut sürümden büyükse ve
    `EngelsizDPI.exe` varlığı ile SHA-256 (GitHub'ın `digest` alanı ya da `EngelsizDPI.exe.sha256` dosyası)
    bulunuyorsa güncelleme var demektir. Doğrulanamayan dosya asla kurulmaz.
+   **Yedek yol:** API hata verirse (kimliksiz istek sınırı IP başına saatte 60; aynı IP'yi paylaşan çok
+   kullanıcıda dolabilir) `github.com/<repo>/releases/latest` adresinin `.../releases/tag/vX.Y.Z` yönlendirmesinden
+   sürüm okunur. İndirme ve `.sha256` adresleri `releases/download/<etiket>/` kalıbından üretilir
+   (`ParseLatestRedirect`). Bu yolda GitHub'ın `digest` alanı olmadığı için `.sha256` dosyası şarttır; CI her
+   sürümde yükler.
 2. **Ne zaman:** Açılıştan 15 sn sonra ve 6 saatte bir arka planda; ayrıca başlığın sağ üstündeki durum
    düğmesiyle elle.
 3. **Kullanıcıya sorma kuralı:**
@@ -486,7 +512,8 @@ dotnet publish src/EngelsizDPI -c Release -r win-x64 -o publish   # tek dosya ex
   projesine başvuramaz (NETSDK1151).
 - Proje klasörü taşınamıyor ya da yeniden adlandırılamıyorsa `dotnet build-server shutdown` çalıştırın.
 - **Test kapsamı:** kurulum kararı (`Installer.Decide`, bozuk kurulu sürüm dahil), açılış sağlığı sayacı ve
-  atlanan sürüm (`StartupHealth`), sürüm ayrıştırma, release ayrıştırma, checksum, exe
+  atlanan sürüm (`StartupHealth`), DNS sorgu paketi ve yanıt doğrulama, yerel sahte sunucuyla DNS sınaması
+  (`SecureDns`), sürüm yönlendirmesi ayrıştırma (`ParseLatestRedirect`), sürüm ayrıştırma, release ayrıştırma, checksum, exe
   değiştirme (açıkken dahil), paket ayrıştırma ve doğrulama, paket seçimi saklama, host listesi, tarayıcı
   alan adı çıkarma, `IsCovered`, `NormalizeDomain`. Motor, görevler ve arayüz akışları için otomatik test
   **yoktur**; bunlar elle denenir.

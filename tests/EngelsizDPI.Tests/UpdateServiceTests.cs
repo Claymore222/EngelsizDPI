@@ -66,6 +66,25 @@ public sealed class UpdateServiceTests : IDisposable
         Assert.Null(UpdateService.ParseRelease(Release("v1.1.0", Asset("Other.zip", "sha256:" + new string('a', 64))), new Version(1, 0, 0)));
     }
 
+    [Fact]
+    public void ParseLatestRedirect_builds_download_and_checksum_urls()
+    {
+        var info = UpdateService.ParseLatestRedirect("u/r", new Uri("https://github.com/u/r/releases/tag/v1.4.0"), new Version(1, 3, 1));
+        Assert.NotNull(info);
+        Assert.Equal(new Version(1, 4, 0), info.Version);
+        Assert.Equal("https://github.com/u/r/releases/download/v1.4.0/EngelsizDPI.exe", info.DownloadUrl);
+        Assert.Equal("https://github.com/u/r/releases/download/v1.4.0/EngelsizDPI.exe.sha256", info.Sha256Url);
+        Assert.Null(info.Sha256);
+    }
+
+    [Theory]
+    [InlineData("https://github.com/u/r/releases/tag/v1.3.1")] // aynı sürüm
+    [InlineData("https://github.com/u/r/releases/tag/v1.0.0")] // eski sürüm
+    [InlineData("https://github.com/u/r/releases")]            // henüz sürüm yok
+    [InlineData("https://github.com/u/r/releases/tag/nightly")] // sürüm olmayan etiket
+    public void ParseLatestRedirect_ignores_non_updates(string location) =>
+        Assert.Null(UpdateService.ParseLatestRedirect("u/r", new Uri(location), new Version(1, 3, 1)));
+
     [Theory]
     [InlineData("ABCDEF0123456789abcdef0123456789ABCDEF0123456789abcdef0123456789  EngelsizDPI.exe", true)]
     [InlineData("abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789\n", true)]
