@@ -374,4 +374,5 @@ ve çakışma bulunur; operatör seçimi de formda zorunludur. Ardından ilk bak
 | `unsafe` + `await` derleme hatası (CS4004) | `unsafe`'i sınıfa değil, yalnızca ilgili üyelere koyun (`WinDivertKeepAlive` örneği) |
 | Arayüzde renk temaya uymuyor | Pencerede sabit renk kullanmayın. `App.axaml` → `ThemeDictionaries` içine Dark ve Light için anahtar ekleyip `DynamicResource` ile bağlayın |
 | Bir bağlantı tarayıcı yerine Belgeler klasörünü açıyor | explorer.exe argümanı yol gibi okur, 260 karakterden uzun adreste Belgeler'i açar. `Shell.OpenUrl` uzun adresleri `%TEMP%\EngelsizDPI\baglanti.url` kısayoluna yazıp onu açar (v1.4.1). Bağlantıyı doğrudan `Process.Start` ile açmayın: tarayıcı yönetici yetkisiyle açılır |
+| Güncellemeden sonra masaüstü/Başlat/görev çubuğu ikonu eski logo | Windows ikon önbelleği. `RefreshInstalledState` sürüm değişince kısayolları yeniden yazar ve `SHChangeNotify` ile kabuğa haber verir (v1.4.3). Elle: `ie4uinit.exe -show`; olmazsa oturumu kapatıp açmak |
 | Satır sonu uyarıları (LF → CRLF) | `.gitattributes` `text=auto`; zararsız |

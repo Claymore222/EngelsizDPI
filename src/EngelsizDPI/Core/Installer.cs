@@ -127,8 +127,14 @@ public static partial class Installer
         if (!IsRunningInstalled) return;
         try
         {
+            var upgraded = RegisteredVersion() != UpdateService.CurrentVersion.ToString();
             RegisterUninstallEntry();
-            if (!File.Exists(StartMenuShortcut)) CreateShortcut(StartMenuShortcut);
+            if (upgraded || !File.Exists(StartMenuShortcut)) CreateShortcut(StartMenuShortcut);
+            // Kullanıcı masaüstü kısayolunu sildiyse geri koyulmaz.
+            if (upgraded && File.Exists(DesktopShortcut)) CreateShortcut(DesktopShortcut);
+            // Windows kısayol ve görev çubuğu ikonlarını önbellekten gösterir; exe'nin ikonu değişse de kendiliğinden
+            // fark etmez. Sürüm değişince yeni ikonun okunması için kabuğa haber verilir.
+            if (upgraded) RefreshShellIcons();
             AutoStart.EnsureLauncher(InstalledExe);
             // Görev eski, bütün kullanıcıların ortak adıyla ya da kurulumdan önce indirilen exe'nin yoluyla kayıtlı
             // olabilir; kullanıcıya özel ada ve kurulu exe'ye taşınır.
@@ -204,6 +210,24 @@ public static partial class Installer
         if (File.Exists(InstalledExe))
             key.SetValue("EstimatedSize", (int)(new FileInfo(InstalledExe).Length / 1024), RegistryValueKind.DWord);
     }
+
+    private static string? RegisteredVersion()
+    {
+        using var key = Registry.LocalMachine.OpenSubKey(UninstallKeyPath);
+        return key?.GetValue("DisplayVersion") as string;
+    }
+
+    private static void RefreshShellIcons()
+    {
+        const int SHCNE_UPDATEITEM = 0x2000, SHCNE_ASSOCCHANGED = 0x08000000;
+        const uint SHCNF_IDLIST = 0x0000, SHCNF_PATHW = 0x0005;
+        foreach (var path in new[] { InstalledExe, StartMenuShortcut, DesktopShortcut }.Where(File.Exists))
+            SHChangeNotify(SHCNE_UPDATEITEM, SHCNF_PATHW, path, null);
+        SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, null, null);
+    }
+
+    [LibraryImport("shell32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    private static partial void SHChangeNotify(int eventId, uint flags, string? item1, string? item2);
 
     private static void CreateShortcut(string path)
     {
