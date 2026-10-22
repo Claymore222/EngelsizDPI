@@ -59,6 +59,9 @@ public static class SitePacks
             var domains = (p.Domains ?? []).Select(d => d.Trim().ToLowerInvariant()).Distinct().ToList();
             if (domains.Count is 0 or > MaxDomainsPerPack || domains.Any(d => !IsValidDomain(d)))
                 throw new FormatException($"{p.Id}: alan adları geçersiz.");
+            // Test adresi paketin kendi alan adlarından biri olmalı; liste uygulamaya başka sunuculara istek attıramaz.
+            if (!SiteScanner.IsCovered(test.IdnHost, domains))
+                throw new FormatException($"{p.Id}: test adresi paketin alan adlarından birinde olmalı.");
 
             packs.Add(new SitePack(p.Id.Trim().ToLowerInvariant(), p.Name.Trim(), p.Category?.Trim() is { Length: > 0 } c ? c : "Diğer",
                 test.ToString(), domains, p.Default));

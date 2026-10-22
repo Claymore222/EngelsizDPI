@@ -115,6 +115,7 @@ src/EngelsizDPI/
     AutoStart.cs                  Zamanlanmış görevler (Launch, Autostart)
     Installer.cs                  Kendini kurma, kaldırma, kısayollar, Uninstall kaydı
     StartupHealth.cs              Bozuk sürüm tespiti: üst üste açılamayan sürümden geri dönüş
+    NativeExtraction.cs           Yerel kütüphaneleri %TEMP% yerine Program Files altına çıkarmak için yeniden başlatma
     GoodbyeDpiEngine.cs           Motor: dosyaları çıkarır, goodbyedpi.exe'yi başlatır, çakışmaları bulur
     WinDivertKeepAlive.cs         Sürücüye boş bir handle tutar (1058 hatası çözümü)
     KillOnCloseJob.cs             Job Object: uygulama ölünce goodbyedpi da ölür
@@ -200,6 +201,7 @@ hiç başlamaz, pencere öne gelmezdi.
 | `--installed` | Kurulumdan hemen sonra; "kuruldu" bilgi bandını göster |
 | `--uninstall [--quiet]` | Kaldır (Windows "Yüklü uygulamalar" bunu çağırır) |
 | `--from-task` | Launch görevi başlattı (Main en başta ayıklar; yalnızca döngü koruması için) |
+| `--secure-runtime` | Güvenli çıkarma klasörüyle yeniden başlatılan kopya (Main en başta ayıklar; döngü koruması) |
 
 **Adlandırılmış nesneler:** `Local\EngelsizDPI.Instance` (mutex), `Local\EngelsizDPI.Show` (ikinci açılış
 pencereyi öne getirir), `Local\EngelsizDPI.Exit` (kurulum/kaldırma çalışan kopyayı kapatır). Exit olayı mutex
@@ -216,8 +218,10 @@ Tüm yollar `Core/AppSettings.cs` içindeki `AppPaths`, `Installer` ve `UpdateSe
 | Kurulu exe | `C:\Program Files\EngelsizDPI\EngelsizDPI.exe` | Yalnızca yönetici |
 | Motor dosyaları (kuruluyken) | `C:\Program Files\EngelsizDPI\engine\` | Yalnızca yönetici |
 | İndirilen güncellemeler (kuruluyken) | `C:\Program Files\EngelsizDPI\updates\` | Yalnızca yönetici |
+| Yerel kütüphaneler (SkiaSharp, HarfBuzz, ANGLE) | `C:\Program Files\EngelsizDPI\runtime\EngelsizDPI\<özet>\` | Yalnızca yönetici |
+| Uzun bağlantılar için internet kısayolu | `C:\Program Files\EngelsizDPI\baglanti.url` | Yalnızca yönetici |
 | Motor dosyaları (kurulu değilken) | `C:\ProgramData\EngelsizDPI\engine\` | — |
-| Günlük | `C:\ProgramData\EngelsizDPI\logs\engelsizdpi.log` (1 MB'da `.1`'e döner) | — |
+| Günlük | `C:\ProgramData\EngelsizDPI\logs\engelsizdpi.log` (1 MB'da `.1`'e döner) | Yalnızca yönetici (`SecureDataDir`) |
 | Ayarlar | `%AppData%\EngelsizDPI\settings.json` | Kullanıcı |
 | Paket önbelleği | `%AppData%\EngelsizDPI\packs.json` | Kullanıcı |
 | Açılış durumu / atlanan sürüm | `C:\Program Files\EngelsizDPI\startup-state`, `skipped-version` | Yalnızca yönetici |
@@ -227,7 +231,29 @@ Tüm yollar `Core/AppSettings.cs` içindeki `AppPaths`, `Installer` ve `UpdateSe
 **Güvenlik kararı:** Uygulama UAC sormadan yönetici olarak başlayabildiği için, yönetici olarak çalıştırılan
 hiçbir exe/dll kullanıcının yazabildiği bir klasörde durmamalı. Aksi halde herhangi bir program oraya kendi
 dosyasını koyup yönetici yetkisi kazanabilirdi. Bu yüzden motor ve güncellemeler kuruluyken Program Files
-altındadır. v1.1.0 bunları `%LocalAppData%` ve `ProgramData\engine` altında tutuyordu; `RefreshInstalledState`
+altındadır. Aynı sebeple:
+
+- **Yerel kütüphaneler:** Tek dosyalık .NET uygulaması SkiaSharp/HarfBuzz/ANGLE DLL'lerini varsayılan olarak
+  kullanıcının yazabildiği `%TEMP%\.net` altına çıkarıp oradan yükler. Klasör yalnızca süreç başlamadan
+  `DOTNET_BUNDLE_EXTRACT_BASE_DIR` ortam değişkeniyle değiştirilebildiği için yönetici kopya (`Program.Main`,
+  yetki alındıktan hemen sonra) kendini bu değişken `Program Files\EngelsizDPI\runtime`'ı gösterecek şekilde bir
+  kez yeniden başlatır (`NativeExtraction`). İlk süreç Avalonia'yı başlatmadığı için %TEMP%'teki DLL'leri hiç
+  yüklemez. Yeniden başlatılan kopya `--secure-runtime` argümanını taşır; değişken ulaşmazsa ikinci kez yeniden
+  başlatmaz (sonsuz döngü koruması). Değişken alt süreçlere miras kaldığı için güncelleme sonrası başlatılan
+  yeni sürüm tekrar yeniden başlatmaz. Eski sürümlerin klasörleri açılış sağlıklı sayıldıktan sonra silinir
+  (kullanımdaki klasörün DLL'leri kilitli olduğu için o kalır).
+- **ProgramData:** Windows bu klasörün altında bütün kullanıcılara dosya ekleme izni verir. Yönetici süreci oraya
+  günlük yazdığı için `AppPaths.SecureDataDir` her açılışta klasörün izinlerini SYSTEM/Yöneticiler tam,
+  Kullanıcılar salt okunur olarak sıfırlar ve sahibini Yöneticiler yapar.
+- **Bağlantılar ve günlük** Explorer üzerinden normal kullanıcı yetkisiyle açılır (`Shell`).
+- **Kalan bilinen nokta:** Ayarlar ve paket önbelleği kullanıcıya özel olduğu için `%AppData%\EngelsizDPI`
+  altındadır ve yönetici süreci oraya yazar. Kötü niyetli bir program oraya bağlantı koyup yazmayı başka yere
+  yönlendirebilir; yazılan içerik (JSON ayarlar) ve dosya adları sabit olduğu için etkisi sınırlıdır. Okunan
+  içerik doğrulanır (paket listesi şeması, alan adları).
+
+Güvenlik özeti ve ağ istekleri listesi için kökteki [SECURITY.md](../SECURITY.md) dosyasına bakın.
+
+v1.1.0 bunları `%LocalAppData%` ve `ProgramData\engine` altında tutuyordu; `RefreshInstalledState`
 bu eski klasörleri her açılışta silmeyi dener. `WinDivert64.sys` yeniden başlatmaya kadar kilitli kalabildiği
 için her klasör ayrı denenir.
 

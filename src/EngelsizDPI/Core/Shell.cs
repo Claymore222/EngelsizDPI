@@ -32,7 +32,11 @@ public static class Shell
     {
         try
         {
-            var dir = Path.Combine(Path.GetTempPath(), "EngelsizDPI");
+            // Yönetici süreci kullanıcının yazabildiği bir klasöre (ör. %TEMP%) yazmamalı: oraya konan bir bağlantı
+            // (junction) yazmayı başka bir yere yönlendirebilir. Kuruluyken kurulum klasörü kullanılır.
+            var dir = OperatingSystem.IsWindows() && Installer.IsRunningInstalled
+                ? Installer.InstallDir
+                : Path.Combine(Path.GetTempPath(), "EngelsizDPI");
             Directory.CreateDirectory(dir);
             // Explorer dosyayı arka planda okur; hemen silinemez. Aynı ad her seferinde üzerine yazılır.
             var path = Path.Combine(dir, "baglanti.url");
@@ -46,8 +50,9 @@ public static class Shell
         }
     }
 
+    /// <summary>Dosyayı varsayılan programıyla, Explorer üzerinden normal kullanıcı yetkisiyle açar.</summary>
     public static void OpenFile(string path) =>
-        Start(OperatingSystem.IsWindows() ? "notepad.exe" : "open", path);
+        Start(OperatingSystem.IsWindows() ? "explorer.exe" : "open", path);
 
     private static void Start(string exe, string arg)
     {

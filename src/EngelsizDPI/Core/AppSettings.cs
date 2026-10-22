@@ -1,3 +1,6 @@
+using System.Runtime.Versioning;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using System.Text.Json;
 
 namespace EngelsizDPI.Core;
@@ -70,7 +73,7 @@ public sealed class AppSettings
     /// <summary>Etkin paketlerin ve özel sitelerin birleşik, tekrarsız alan adı listesi.</summary>
     public IReadOnlyList<string> BuildHostList(IEnumerable<SitePack> catalog) =>
         catalog.Where(IsPackEnabled).SelectMany(p => p.Domains)
-            .Concat(CustomDomains)
+            .Concat(CustomDomains.Where(SitePacks.IsValidDomain)) // Elle düzenlenmiş ayar dosyasına karşı
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 }
@@ -101,4 +104,35 @@ public static class AppPaths
     ];
 
     public static string HostListFile => Path.Combine(EngineDir, "hosts.txt");
+
+    /// <summary>
+    /// ProgramData altındaki klasörlere Windows varsayılan olarak bütün kullanıcıların dosya eklemesine izin verir.
+    /// Yönetici olarak çalışan uygulama buraya günlük yazdığı (ve günlüğü döndürürken dosya taşıdığı) için, sıradan
+    /// bir programın oraya bağlantı (junction/symlink) koyup yönetici sürecine başka bir dosyayı yazdırması
+    /// engellenir: klasör yalnızca SYSTEM ve yöneticilere yazılabilir, kullanıcılara salt okunur yapılır.
+    /// </summary>
+    [SupportedOSPlatform("windows")]
+    public static void SecureDataDir()
+    {
+        try
+        {
+            var dir = Directory.CreateDirectory(DataDir);
+            var all = InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit;
+            var admins = new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null);
+            var security = new DirectorySecurity();
+            security.SetAccessRuleProtection(isProtected: true, preserveInheritance: false);
+            security.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null),
+                FileSystemRights.FullControl, all, PropagationFlags.None, AccessControlType.Allow));
+            security.AddAccessRule(new FileSystemAccessRule(admins, FileSystemRights.FullControl, all, PropagationFlags.None, AccessControlType.Allow));
+            security.AddAccessRule(new FileSystemAccessRule(new SecurityIdentifier(WellKnownSidType.BuiltinUsersSid, null),
+                FileSystemRights.ReadAndExecute, all, PropagationFlags.None, AccessControlType.Allow));
+            // Klasörü daha önce başka biri oluşturduysa sahibi olarak izinleri geri açabilirdi.
+            security.SetOwner(admins);
+            dir.SetAccessControl(security);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidOperationException or PrivilegeNotHeldException)
+        {
+            Log.Write("Veri klasörünün izinleri ayarlanamadı: " + e.Message);
+        }
+    }
 }

@@ -311,6 +311,17 @@ ve çakışma bulunur; operatör seçimi de formda zorunludur. Ardından ilk bak
 - **Çözüm:** Görev Yöneticisi'nden süreçleri sonlandırıp tekrar açın. `EngelsizDPI.exe.old` dosyası
   `CleanupAsync` ile silinir; kalırsa elle silinebilir.
 
+### 5.4b Açılışta bir anlığına iki EngelsizDPI süreci ya da günlükte "Güvenli çıkarma klasörü ayarlanamadı" — *v1.4.2*
+
+- **Normal olan:** Yönetici kopya, yerel kütüphaneleri güvenli klasöre çıkarmak için kendini bir kez yeniden
+  başlatır (bkz. MIMARI §6, `NativeExtraction`). Görev Yöneticisi'nde bir anlığına iki süreç görünebilir; ilki
+  hemen kapanır.
+- **Günlükteki uyarı:** Yeniden başlatılan kopyaya ortam değişkeni ulaşmamış demektir. Uygulama döngüye girmez,
+  kütüphaneleri varsayılan `%TEMP%` klasöründen yükleyerek açılır (eski davranış). `--secure-runtime`
+  argümanının ve değişkenin `ProcessStartInfo.Environment` ile geçtiğini kontrol edin.
+- **Pencere arkada açılıyorsa:** Yeniden başlatma ön plan hakkını `AllowSetForegroundWindow` ile devreder; Windows
+  bunu yine de engelleyebilir. Tepsi ikonuna tıklamak pencereyi öne getirir.
+
 ### 5.5 Depo adı değişti, silindi ya da özel yapıldı — *KRİTİK, dikkat*
 
 - Depo adı (`Claymore222/EngelsizDPI`) **her exe'nin içine gömülüdür**. Depo silinir ya da özel yapılırsa

@@ -32,6 +32,8 @@ public sealed class SitePackTests
     [InlineData("""{"revision":1,"packs":[{"id":"x","name":"X","test":"https://x.com/","domains":[]}]}""")]
     [InlineData("""{"revision":1,"packs":[{"id":"x","name":"X","test":"https://x.com/","domains":["not a domain"]}]}""")]
     [InlineData("""{"revision":1,"packs":[{"id":"x","name":"X","test":"https://x.com/","domains":["x.com"]},{"id":"x","name":"Y","test":"https://y.com/","domains":["y.com"]}]}""")]
+    [InlineData("""{"revision":1,"packs":[{"id":"x","name":"X","test":"https://kotu.example/","domains":["x.com"]}]}""")]
+    [InlineData("""{"revision":1,"packs":[{"id":"x","name":"X","test":"https://notx.com/","domains":["x.com"]}]}""")]
     public void Parse_rejects_invalid_catalogs(string json) =>
         Assert.ThrowsAny<Exception>(() => SitePacks.Parse(json));
 

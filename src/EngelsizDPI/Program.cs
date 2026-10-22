@@ -28,13 +28,21 @@ internal static class Program
     public static void Main(string[] args)
     {
         var fromTask = args.Contains(AutoStart.FromTaskArg);
-        args = args.Where(a => a != AutoStart.FromTaskArg).ToArray();
+        var relaunched = args.Contains(NativeExtraction.RelaunchArg);
+        args = args.Where(a => a != AutoStart.FromTaskArg && a != NativeExtraction.RelaunchArg).ToArray();
 
         // Yönetici değilsek yönetici kopyayı başlatıp çıkarız (kuruluysa UAC sorulmaz).
         if (OperatingSystem.IsWindows() && !Elevation.IsElevated)
         {
             Elevation.Elevate(args, fromTask);
             return;
+        }
+
+        if (OperatingSystem.IsWindows())
+        {
+            // Yerel kütüphaneler kullanıcının yazabildiği %TEMP%'ten yüklenmesin (bkz. NativeExtraction).
+            if (NativeExtraction.RelaunchIfNeeded(args, relaunched)) return;
+            AppPaths.SecureDataDir();
         }
 
         StartInTray = args.Contains("--tray");

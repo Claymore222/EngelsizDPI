@@ -27,9 +27,13 @@ C# / .NET 10 + Avalonia 12, arka planda GoodbyeDPI + WinDivert ve Yandex DNS (po
 8. **Site paketleri:** Eklemeden önce engeli kullanıcı hattında `curl -sv` ile doğrulayın (RST = eklenebilir,
    zaman aşımı = IP engeli, eklenmez). Yetişkin, arkadaşlık ve siyasi siteler hazır listeye girmez. Her
    değişiklikte `revision` +1. Paket id'leri değiştirilmez.
-9. **WinDivertKeepAlive'a dokunurken dikkat:** Sürücü handle'ı motor yeniden başlatılırken kapatılmamalı
+9. **Güvenlik:** Uygulama UAC sormadan yönetici olarak başlayabilir. Yönetici süreci kullanıcının yazabildiği
+   bir yerden (`%TEMP%`, `%AppData%`, ProgramData'nın izinleri düzeltilmemiş klasörleri) exe/dll yüklememeli,
+   çalıştırmamalı; tarayıcı ya da başka program doğrudan başlatılmamalı (`Shell` Explorer üzerinden açar).
+   Ayrıntı: SECURITY.md ve MIMARI §6.
+10. **WinDivertKeepAlive'a dokunurken dikkat:** Sürücü handle'ı motor yeniden başlatılırken kapatılmamalı
    (1058 döngüsü, bkz. SORUN-GIDERME §1.1).
-10. Değişiklikten sonra testler geçmeli. Arayüz değiştiyse ekran görüntüsü aracıyla iki temada bakılmalı.
+11. Değişiklikten sonra testler geçmeli. Arayüz değiştiyse ekran görüntüsü aracıyla iki temada bakılmalı.
     Yapılmayan gerçek cihaz testini "test edildi" diye raporlamayın.
 
 ## Komutlar

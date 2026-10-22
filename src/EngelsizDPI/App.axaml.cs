@@ -70,6 +70,7 @@ public partial class App : Application
         await Task.Delay(TimeSpan.FromSeconds(10));
         if (_exiting) return;
         StartupHealth.MarkCurrentHealthy();
+        if (OperatingSystem.IsWindows()) _ = Task.Run(NativeExtraction.CleanupOldVersions);
         _vm!.Update.StartBackgroundChecks();
     }
 
