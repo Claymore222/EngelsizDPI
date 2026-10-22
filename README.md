@@ -26,7 +26,9 @@ Türkiye'de erişime kapatılan **Discord**, **Roblox** ve eklediğiniz diğer s
 
 Uygulamadaki hazır site listesi bu depodaki [`packs/packs.json`](packs/packs.json) dosyasından gelir ve uygulama güncellenmeden, birkaç saat içinde herkese ulaşır. GitHub'a erişilemezse jsDelivr üzerinden, o da olmazsa uygulamanın içindeki yedek listeden okunur.
 
-**Kendi siteniz için:** Uygulamada *Site ekle veya tara*'ya basıp alan adını yazın. Bağlıyken EngelsizDPI o sitenin kullandığı diğer adresleri (resim ve dosya sunucuları) tarar, engelli görünenleri size önerir.
+**Hazır paketler:** Site listesinin altındaki *Hazır paketler* düğmesi bütün paketleri arama kutusuyla birlikte açar; istediğinizi açın, *Tamam* deyin. Ana listede yalnızca seçtiğiniz siteler görünür.
+
+**Kendi siteniz için:** *Kendi siteni ekle*'ye basıp alan adını yazın. Bağlıyken EngelsizDPI o sitenin kullandığı diğer adresleri (resim ve dosya sunucuları) tarar, engelli görünenleri size önerir.
 
 **Herkes için önermek:** Siteyi ekledikten sonra *Herkese öner*'e basın. GitHub'da içi doldurulmuş bir [öneri formu](../../issues/new?template=site-onerisi.yml) açılır. Onaylanan siteler `packs.json`'a eklenir.
 
@@ -42,12 +44,12 @@ Listeyi değiştirdiğinizde en üstteki `revision` sayısını bir artırın; u
 
 ## Güncellemeler
 
-EngelsizDPI kendini günceller, yeni exe indirmeniz gerekmez. Uygulama açıldıktan kısa süre sonra ve ardından 6 saatte bir GitHub Releases'e bakar. Yeni sürüm varsa arka planda indirir ve SHA-256 ile doğrular. Kurulum iki durumda yapılır:
+EngelsizDPI kendini günceller, yeni exe indirmeniz gerekmez. Uygulama açıldıktan kısa süre sonra ve ardından 6 saatte bir GitHub Releases'e bakar; pencerenin sağ üstündeki durum yazısına tıklayarak elle de denetleyebilirsiniz. İndirilen her güncelleme SHA-256 ile doğrulanır.
 
-- Bir sonraki açılışta, siz fark etmeden, ya da
-- Penceredeki **Yeniden başlat** düğmesine bastığınızda (bağlantı birkaç saniye kesilir ve kendiliğinden geri gelir).
+- **Elle denetlediğinizde** hiçbir şey indirilmez; "vX mevcut" bandı çıkar. *Şimdi yükle* derseniz kurulur, *Sonra* derseniz istediğiniz zaman tepsi menüsünden kurabilirsiniz.
+- **Arka planda** yeni sürüm bulunursa ve *Otomatik güncelle* açıksa sessizce indirilir ve bir sonraki açılışta kurulur (ya da *Şimdi kur* ile hemen). Kapalıysa yalnızca haber verilir.
 
-Otomatik yüklemeyi Ayarlar'dan kapatabilirsiniz. Kapalıyken yeni sürüm yalnızca bildirilir.
+Uygulama siz bir şeye basmadan çalışırken asla yeniden başlamaz.
 
 ## Nasıl çalışır?
 
@@ -80,7 +82,7 @@ Bilgisayarınızda GoodbyeDPI-Turkey servisi ya da DNSChanger kuruluysa Engelsiz
 Genellikle bir antivirüs WinDivert'i engelliyor ya da başka bir DPI aracı çalışıyor demektir. Yukarıdaki antivirüs notuna bakın.
 
 **Ayarlar nerede saklanıyor?**
-`%AppData%\EngelsizDPI\settings.json`. Motor dosyaları ise `C:\ProgramData\EngelsizDPI\engine` klasöründe.
+`%AppData%\EngelsizDPI\settings.json`. Motor dosyaları `C:\Program Files\EngelsizDPI\engine`, günlük `C:\ProgramData\EngelsizDPI\logs` klasöründe.
 
 ## Geliştirme
 
@@ -117,6 +119,8 @@ src/EngelsizDPI/
   Views/         Avalonia arayüzü
   Engine/win-x64 exe'ye gömülen GoodbyeDPI + WinDivert dosyaları
 ```
+
+Ayrıntılı mimari için [docs/MIMARI.md](docs/MIMARI.md), olası sorunlar ve çözümleri için [docs/SORUN-GIDERME.md](docs/SORUN-GIDERME.md) dosyasına bakın.
 
 Motor, `IBypassEngine` arayüzünün arkasındadır. macOS desteği [byedpi](https://github.com/hufrea/byedpi) tabanlı ikinci bir motorla eklenebilir. Arayüz (Avalonia) zaten macOS'ta çalışıyor.
 
