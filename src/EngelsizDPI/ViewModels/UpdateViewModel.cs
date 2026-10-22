@@ -15,7 +15,8 @@ namespace EngelsizDPI.ViewModels;
 /// </summary>
 public sealed partial class UpdateViewModel : ObservableObject
 {
-    private static readonly TimeSpan FirstCheckDelay = TimeSpan.FromSeconds(15);
+    // App, açılış sağlıklı sayıldıktan (10 sn) sonra başlatır; ilk denetim açılıştan ~15 sn sonra olur.
+    private static readonly TimeSpan FirstCheckDelay = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan CheckInterval = TimeSpan.FromHours(6);
 
     private readonly AppSettings _settings;

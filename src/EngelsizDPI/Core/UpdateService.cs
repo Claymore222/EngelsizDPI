@@ -63,8 +63,12 @@ public static class UpdateService
 
         await using var stream = await response.Content.ReadAsStreamAsync(ct);
         using var json = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
-        return ParseRelease(json.RootElement, CurrentVersion);
+        var info = ParseRelease(json.RootElement, CurrentVersion);
+        return info is not null && IsSkipped(info.Version) ? null : info;
     }
+
+    /// <summary>Bu bilgisayarda açılamadığı için geri dönülen sürüm (bkz. <see cref="StartupHealth"/>).</summary>
+    private static bool IsSkipped(Version version) => StartupHealth.Installed?.IsSkipped(version) == true;
 
     /// <summary>GitHub "latest release" yanıtını yorumlar; test edilebilsin diye ayrı tutuldu.</summary>
     public static UpdateInfo? ParseRelease(JsonElement release, Version current)
@@ -152,7 +156,7 @@ public static class UpdateService
         if (!Directory.Exists(UpdateDir)) return null;
         return Directory.EnumerateFiles(UpdateDir, "EngelsizDPI-*.exe")
             .Select(path => (path, ok: TryParseVersion(Path.GetFileNameWithoutExtension(path)["EngelsizDPI-".Length..], out var v), v))
-            .Where(x => x.ok && x.v > CurrentVersion)
+            .Where(x => x.ok && x.v > CurrentVersion && !IsSkipped(x.v))
             .OrderByDescending(x => x.v)
             .Select(x => x.path)
             .FirstOrDefault();
@@ -193,7 +197,10 @@ public static class UpdateService
         Process.Start(psi);
     }
 
-    /// <summary>Güncelleme sonrası artıkları temizler: .old exe ve artık gereksiz indirmeler.</summary>
+    /// <summary>
+    /// Güncelleme sonrası artıkları temizler: .old exe ve artık gereksiz indirmeler. Yalnızca açılış sağlıklı
+    /// sayıldıktan sonra çağrılır; o zamana kadar .old, bozuk sürümden geri dönmek için saklanır.
+    /// </summary>
     public static async Task CleanupAsync()
     {
         if (Environment.ProcessPath is { } exe)

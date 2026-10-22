@@ -18,8 +18,10 @@ Bir sorun bildirildiğinde ilk bakılacak yerler:
 | `curl -sv -o NUL --max-time 7 https://ALANADI/` | `Recv failure: Connection was reset` (çıkış 35) = SNI/DPI engeli, **bu uygulama açabilir**. Çıkış 28 (zaman aşımı) = büyük ihtimalle IP engeli, **açamaz**. Çıkış 6 = DNS çözülemedi. `HTTP/` satırı = açık |
 | `sc query WinDivert` | Sürücü durumu. `STOP_PENDING` ya da "marked for deletion" = 1058 döngüsü (bkz. 1.1) |
 | `sc query GoodbyeDPI` | Eski GoodbyeDPI-Turkey/DNSChanger servisi kurulu mu |
-| `schtasks /query /tn "EngelsizDPI\Launch" /v /fo list` | UAC'siz başlatma görevi: çalıştıracağı exe, kullanıcı, çalışma düzeyi |
-| `schtasks /query /tn "EngelsizDPI\Autostart" /v /fo list` | Windows açılışında başlatma görevi |
+| `schtasks /query /fo csv /nh \| findstr EngelsizDPI` | Görevler. Kullanıcı başına `Launch-<SID>` (UAC'siz başlatma) ve açılışta başlatma açıksa `Autostart-<SID>`. SID için: `whoami /user` |
+| `schtasks /query /tn "EngelsizDPI\Launch-<SID>" /xml` | Görevin exe'si, argümanı (`--from-task`), sahibi (`UserId`), çalışma düzeyi |
+| `C:\Program Files\EngelsizDPI\startup-state` | Varsa: `sürüm sayı` = o sürümün üst üste sağlıklı bitmeyen açılışları (bkz. 5.2) |
+| `C:\Program Files\EngelsizDPI\skipped-version` | Bozuk sayılıp geri dönülen sürüm; güncellemede atlanır |
 | `tasklist \| findstr /i "goodbyedpi EngelsizDPI"` | Süreçler çalışıyor mu, birden fazla goodbyedpi var mı |
 | `%AppData%\EngelsizDPI\settings.json` | Seçili yöntem, paketler, ayarlar |
 | `%AppData%\EngelsizDPI\packs.json` | İndirilmiş site listesi (`revision`) |
@@ -148,11 +150,12 @@ Bir sorun bildirildiğinde ilk bakılacak yerler:
 ### 3.1 Her açılışta UAC soruyor — *kontrol edilecek*
 
 - **Neden olasılıkları:**
-  - `EngelsizDPI\Launch` görevi yok ya da bozuk.
+  - `EngelsizDPI\Launch-<SID>` görevi yok ya da bozuk.
   - Kurulu exe, açılan exe'den eski (`IsInstalledAndCurrent` false). Örneğin kullanıcı İndirilenler'deki yeni
     exe'yi açıyor ve kurulum başarısız oluyor.
   - Uygulama argümanla açılıyor. Görev argüman taşımadığı için argümanlı açılışta UAC'ye düşülür (tasarım gereği).
-- **Çözüm:** `schtasks /query /tn "EngelsizDPI\Launch" /v /fo list` ile kontrol edin. Uygulamayı bir kez
+  - Hesap artık yönetici değil: görev yönetici yetkisi veremez, uygulama bilerek UAC'ye düşer (bkz. 3.4).
+- **Çözüm:** `schtasks /query /fo csv /nh | findstr EngelsizDPI` ile kontrol edin. Uygulamayı bir kez
   yönetici olarak açmak `RefreshInstalledState` ile görevi yeniden oluşturur.
 
 ### 3.2 Windows açılışında başlamıyor ya da Discord'dan sonra başlıyor — *şu an çalışıyor*
@@ -164,22 +167,27 @@ Bir sorun bildirildiğinde ilk bakılacak yerler:
 - **Discord yine de önce açılırsa:** Discord'u yeniden başlatmak yeter. Kalıcı çözüm olarak motoru oturum
   açılmadan önce başlatan bir **Windows servisi** mimarisi düşünülebilir; şimdilik gerek görülmedi.
 
-### 3.3 Aynı bilgisayarda birden fazla Windows kullanıcısı — *BİLİNEN ZAYIFLIK, düzeltilmedi*
+### 3.3 Aynı bilgisayarda birden fazla Windows kullanıcısı — *ÇÖZÜLDÜ (v1.3.1)*
 
-- **Sorun:** Görevler sabit adlıdır (`EngelsizDPI\Launch`, `EngelsizDPI\Autostart`) ve onları **en son
-  oluşturan kullanıcı** adına (`InteractiveToken`) çalışır. İkinci kullanıcı uygulamayı açtığında
-  `schtasks /run` görevi birinci kullanıcının oturumunda başlatır ya da başaramaz. İkinci kullanıcıya pencere
-  gelmez. İkinci kullanıcı bir kez UAC ile açarsa görev ona geçer, bu sefer birincisi bozulur.
-- **Çözüm önerisi:** Görev adlarına kullanıcı SID'ini ekleyin (`EngelsizDPI\Launch-S-1-5-21-...`). Kaldırmada
-  hepsini silin (`schtasks /query /fo csv` ile `\EngelsizDPI\` klasöründekileri listeleyip).
+- **Eski sorun:** Görevler sabit adlıydı (`EngelsizDPI\Launch`) ve en son oluşturan kullanıcının oturumunda
+  çalışıyordu. İkinci kullanıcıya pencere gelmiyor, ikinci kullanıcı UAC ile açınca da birincisi bozuluyordu.
+- **Çözüm:** Görev adlarında kullanıcının SID'i var (`Launch-<SID>`, `Autostart-<SID>`). Her kullanıcı ilk
+  açılışta bir kez UAC görür ve kendi görevini oluşturur. Eski ortak görevler yalnızca sahibine aitse taşınır.
+  Kaldırma bütün kullanıcıların görevlerini siler.
+- **Hâlâ geçerli sınırlar:** İki kullanıcı **aynı anda** oturum açıp ikisinde de bağlanırsa iki goodbyedpi
+  çalışır. GoodbyeDPI bütün bilgisayarın trafiğini işlediği için çakışma bandı çıkabilir ve "Düzelt" diğer
+  oturumdaki goodbyedpi'ı kapatır. Ayarlar (`%AppData%`) kullanıcıya özeldir. Kaldırma yalnızca kaldıran
+  kullanıcının ayarlarını siler.
 
-### 3.4 Yönetici olmayan hesap ya da sonradan yetkisi alınmış hesap — *BİLİNEN ZAYIFLIK, düzeltilmedi*
+### 3.4 Yönetici olmayan hesap ya da sonradan yetkisi alınmış hesap — *ÇÖZÜLDÜ (v1.3.1)*
 
-- **Risk:** `HighestAvailable` görevi standart kullanıcıda **yönetici olmadan** çalışır. Görev exe'yi başlatır,
-  exe yönetici olmadığını görüp yine görevi çalıştırır. Bu sonsuz bir süreç başlatma döngüsüne dönüşebilir.
-  (Standart kullanıcı başkasının görevini genellikle çalıştıramadığı için nadir, ama mümkün.)
-- **Çözüm önerisi:** Launch görevine sabit bir argüman verin (ör. `--from-task`). `Program.Main`, bu argümanla
-  açılıp hâlâ yönetici değilse görevi tekrar denemesin, doğrudan UAC'ye (`RelaunchWithUac`) düşsün.
+- **Eski risk:** `HighestAvailable` görevi, hesap yönetici değilse yetkisiz çalışır. Exe yönetici olmadığını
+  görüp yine görevi çalıştırınca sonsuz süreç başlatma döngüsü oluşabiliyordu.
+- **Çözüm:** Launch görevi exe'yi `--from-task` ile başlatır. `Program.Main` bu argümanı görüp hâlâ yönetici
+  değilse görevi tekrar çalıştırmaz, UAC ister ve günlüğe "Başlatma görevi yönetici yetkisi vermedi" yazar.
+  Yönetici olmayan hesapta uygulama her açılışta yönetici parolası ister; WinDivert için bu kaçınılmaz.
+- **Bu mantığı değiştirirken:** `--from-task` her yerde en başta ayıklanır; `HandleInstall` ve güncelleme
+  yeniden başlatmaları bu argümanı taşımamalı.
 
 ### 3.5 "EngelsizDPI şu anda açık ve kapatılamadı" — *nadir*
 
@@ -256,15 +264,22 @@ Bir sorun bildirildiğinde ilk bakılacak yerler:
   yönlendirilen `.../tag/vX.Y.Z` adresinden sürümü okumak (rate limit yok). İndirme adresi
   `.../releases/download/vX.Y.Z/EngelsizDPI.exe` ve `.sha256` sabit kalıptan üretilebilir.
 
-### 5.2 Bozuk bir sürüm yayınlandı — *KRİTİK, dikkat*
+### 5.2 Bozuk bir sürüm yayınlandı — *v1.3.1'den itibaren kendiliğinden toparlanır, yine de dikkat*
 
-- **Sorun:** Yeni sürüm açılışta çöküyorsa kendini güncelleyemez. Ayrıca:
-  - Kullanıcı daha **eski** düzgün exe'yi indirip açarsa `Installer.Decide` kurulu sürüm daha yeni olduğu için
-    `LaunchInstalled` der ve **bozuk kurulu kopyayı** açar.
-  - Güncelleme koruması, mevcut sürümden büyük olmayan exe'yi reddeder.
-- **Çözüm:** Geri almak için **her zaman daha büyük sürüm numarasıyla** düzeltme yayınlayın (`v1.3.1`). Bozuk
-  sürüm hiç açılmıyorsa kullanıcılar yeni exe'yi Releases'ten elle indirip açmalı; daha yeni olduğu için kendini
-  kurulu kopyanın üzerine kurar. Gerekirse önce Ayarlar → Uygulamalar → Kaldır.
+- **Ne olur:** `StartupHealth` (bkz. MIMARI §10.1) kurulu sürümün açılışlarını sayar:
+  - Güncellemeden sonra yeni sürüm üst üste 2 kez sağlıklı açılamazsa, **üçüncü denemede** saklanan önceki
+    sürüme (`EngelsizDPI.exe.old`) kendiliğinden döner ve bozuk sürümü atlar. Kullanıcı 1–2 kez "açılmadı"
+    görür, sonra eski sürüm açılır.
+  - `.old` yoksa (ör. sağlıklı açılış sayılıp silinmişse ve sorun sonradan başladıysa): kullanıcı Releases'ten
+    **eski** bir exe indirip açabilir. Kurulu sürüm bozuk sayıldığı için eski sürüm onun üzerine kurulur.
+  - Günlükte `üst üste açılamadı; vX sürümüne geri dönülüyor` ya da `Kurulu vX açılamıyordu` satırları görünür.
+- **Yine de yapılacak:** Düzeltmeyi **her zaman daha büyük numarayla** yayınlayın (`v1.4.1`). Atlanan sürüm
+  yalnızca kendisi atlanır; daha yeni sürümler normal gelir.
+- **Kurtaramadığı durum:** Uygulama `Program.Main`'de sayaca gelmeden çöküyorsa (eksik çalışma zamanı, statik
+  başlatma hatası) geri dönüş tetiklenmez. O zaman tek çare yeni numarayla düzeltme ve elle indirmedir.
+- **Sağlıklı sayılma şartı:** 10 sn sorunsuz çalışmak ya da tepsiden düzgün çıkış. Uygulama 10 sn dolmadan
+  üst üste iki kez zorla kapatılırsa (Görev Yöneticisi, ani kapatma) ve `.old` hâlâ duruyorsa yanlışlıkla geri
+  dönülebilir. Zararı küçüktür: atlanan sürümden yeni bir sürüm çıkınca yine güncellenir.
 - **Önlem:** Etiket atmadan önce testler + ekran görüntüsü aracı + mümkünse yerel `dotnet publish` exe'sini
   gerçekten açmak.
 

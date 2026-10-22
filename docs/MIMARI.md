@@ -113,6 +113,7 @@ src/EngelsizDPI/
     Elevation.cs                  Yönetici yetkisi: Launch görevi ya da UAC
     AutoStart.cs                  Zamanlanmış görevler (Launch, Autostart)
     Installer.cs                  Kendini kurma, kaldırma, kısayollar, Uninstall kaydı
+    StartupHealth.cs              Bozuk sürüm tespiti: üst üste açılamayan sürümden geri dönüş
     GoodbyeDpiEngine.cs           Motor: dosyaları çıkarır, goodbyedpi.exe'yi başlatır, çakışmaları bulur
     WinDivertKeepAlive.cs         Sürücüye boş bir handle tutar (1058 hatası çözümü)
     KillOnCloseJob.cs             Job Object: uygulama ölünce goodbyedpi da ölür
@@ -141,9 +142,12 @@ uygulama normal kullanıcı olarak başlar (`app.manifest`: `asInvoker`) ve yetk
 
 ```
 Kullanıcı exe'yi açar (asInvoker, yönetici değil)
- └─ Program.Main → Elevation.Elevate(args)
-     ├─ Argüman yok + kurulu sürüm güncel + "EngelsizDPI\Launch" görevi var
-     │    → schtasks /run → görev exe'yi yönetici olarak başlatır (UAC YOK)
+ └─ Program.Main → (--from-task argümanı ayıklanır) → Elevation.Elevate(args, fromTask)
+     ├─ Argüman yok + (kurulu kopyanın kendisi ya da kurulu sürüm güncel ve bozuk değil)
+     │  + "EngelsizDPI\Launch-<SID>" görevi var
+     │    → schtasks /run → görev exe'yi --from-task ile yönetici olarak başlatır (UAC YOK)
+     ├─ --from-task ile gelip yine yönetici değilse (hesap artık yönetici değil)
+     │    → görev tekrar çalıştırılmaz (sonsuz döngü olurdu), UAC sorulur
      └─ Aksi halde → runas ile UAC sorulur (ilk kurulumda bir kez)
      (bu süreç çıkar)
 
@@ -155,8 +159,12 @@ Yönetici süreç → Program.Main
       InstallAndLaunch → kendini Program Files'a kopyala, kurulu kopyayı --installed ile başlat, çık
  3. Tek kopya mutex'i (--updated ile 20 sn bekler; başka kopya varsa Show olayını tetikleyip çıkar)
  4. Bekleyen güncelleme varsa (ve Otomatik güncelle açıksa) uygula, yeni sürümü başlat, çık
- 5. Installer.RefreshInstalledState(): Uninstall kaydı, kısayol, Launch görevi tazelenir, eski klasörler silinir
- 6. Show/Exit olay dinleyicileri → Avalonia başlar (App.OnFrameworkInitializationCompleted)
+ 5. Kurulu kopyaysa StartupHealth.BeginStartup: bu sürüm üst üste 2 kez sağlıklı açılamadıysa ve .old
+    duruyorsa önceki sürüme dön, bu sürümü atla, çık (bkz. §10.1)
+ 6. Installer.RefreshInstalledState(): Uninstall kaydı, kısayol, Launch görevi tazelenir, eski ortak görevler
+    kullanıcıya özel ada taşınır, eski klasörler silinir
+ 7. Show/Exit olay dinleyicileri → Avalonia başlar (App.OnFrameworkInitializationCompleted)
+ 8. 10 sn sorunsuz çalışınca açılış sağlıklı sayılır, ardından güncelleme denetimleri başlar
 ```
 
 **Zamanlanmış görevler** (`AutoStart.cs`, XML ile oluşturulur çünkü `schtasks` varsayılanları pilde başlatmayı
@@ -164,11 +172,18 @@ engeller ve görevi 72 saat sonra sonlandırır):
 
 | Görev | Tetikleyici | Argüman | Amaç |
 |---|---|---|---|
-| `EngelsizDPI\Launch` | Yok | Yok | UAC'siz yönetici başlatma; kurulumda ve her açılışta yeniden oluşturulur |
-| `EngelsizDPI\Autostart` | Oturum açılışı (beklemesiz) | `--tray` | "Windows açılınca başlat" ayarı |
-| `EngelsizDPI` (kök) | — | — | v1.1.0 ve öncesinin görevi; görülünce silinir |
+| `EngelsizDPI\Launch-<SID>` | Yok | `--from-task` | UAC'siz yönetici başlatma; kurulumda ve her açılışta yeniden oluşturulur |
+| `EngelsizDPI\Autostart-<SID>` | Oturum açılışı (beklemesiz) | `--tray` | "Windows açılınca başlat" ayarı |
+| `EngelsizDPI\Launch`, `EngelsizDPI\Autostart` | — | — | v1.2.0–v1.3.x'in ortak görevleri; taşınır/silinir |
+| `EngelsizDPI` (kök) | — | — | v1.1.0 ve öncesinin görevi; taşınır |
 
-İkisi de `RunLevel=HighestAvailable`, `LogonType=InteractiveToken`, `MultipleInstancesPolicy=Parallel`.
+**Görevler kullanıcıya özeldir** (`<SID>` = görevi oluşturan Windows kullanıcısının SID'i). `InteractiveToken`
+görevi yalnızca sahibinin oturumunda çalışır; ortak ad kullanılsaydı aynı bilgisayardaki ikinci kullanıcı
+birincinin görevini ezer, kendi açılışında pencere hiç gelmezdi. Eski ortak görevler, yalnızca o kullanıcıya
+aitse (görev XML'indeki `UserId` SID ya da `DOMAIN\kullanıcı`) taşınır. Kaldırma, `\EngelsizDPI\`
+klasöründeki **bütün** kullanıcıların görevlerini siler.
+
+Hepsi `RunLevel=HighestAvailable`, `LogonType=InteractiveToken`, `MultipleInstancesPolicy=Parallel`.
 **Parallel önemlidir:** uygulama tepside çalışırken görev "çalışıyor" sayılır. `IgnoreNew` olsaydı ikinci açılış
 hiç başlamaz, pencere öne gelmezdi.
 
@@ -181,6 +196,7 @@ hiç başlamaz, pencere öne gelmezdi.
 | `--updated` | Güncelleme sonrası başlatıldı; eski kopyanın kapanmasını 20 sn bekle |
 | `--installed` | Kurulumdan hemen sonra; "kuruldu" bilgi bandını göster |
 | `--uninstall [--quiet]` | Kaldır (Windows "Yüklü uygulamalar" bunu çağırır) |
+| `--from-task` | Launch görevi başlattı (Main en başta ayıklar; yalnızca döngü koruması için) |
 
 **Adlandırılmış nesneler:** `Local\EngelsizDPI.Instance` (mutex), `Local\EngelsizDPI.Show` (ikinci açılış
 pencereyi öne getirir), `Local\EngelsizDPI.Exit` (kurulum/kaldırma çalışan kopyayı kapatır). Exit olayı mutex
@@ -201,6 +217,7 @@ Tüm yollar `Core/AppSettings.cs` içindeki `AppPaths`, `Installer` ve `UpdateSe
 | Günlük | `C:\ProgramData\EngelsizDPI\logs\engelsizdpi.log` (1 MB'da `.1`'e döner) | — |
 | Ayarlar | `%AppData%\EngelsizDPI\settings.json` | Kullanıcı |
 | Paket önbelleği | `%AppData%\EngelsizDPI\packs.json` | Kullanıcı |
+| Açılış durumu / atlanan sürüm | `C:\Program Files\EngelsizDPI\startup-state`, `skipped-version` | Yalnızca yönetici |
 | Kısayollar | Ortak Başlat menüsü ve ortak masaüstü: `EngelsizDPI.lnk` | — |
 | Kaldırma kaydı | `HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\EngelsizDPI` | — |
 
@@ -211,8 +228,10 @@ altındadır. v1.1.0 bunları `%LocalAppData%` ve `ProgramData\engine` altında 
 bu eski klasörleri her açılışta silmeyi dener. `WinDivert64.sys` yeniden başlatmaya kadar kilitli kalabildiği
 için her klasör ayrı denenir.
 
-**Kurulum** (`Installer.Install`): exe Program Files'a kopyalanır (eski sürüm açıksa `.old` olarak yeniden
-adlandırılır), kısayollar `WScript.Shell` COM ile oluşturulur, Uninstall kaydı yazılır, Launch görevi kurulur.
+**Kurulum** (`Installer.Install`): exe Program Files'a kopyalanır (önceki exe `.old` olarak yeniden
+adlandırılır ve geri dönüş için saklanır), kısayollar `WScript.Shell` COM ile oluşturulur, Uninstall kaydı
+yazılır, Launch görevi kurulur. Kurulu sürüm indirilen exe'den **yeni** olduğu hâlde kurulum yapılıyorsa (yalnızca
+kurulu sürüm bozuk sayıldığında olur), o sürüm atlananlara yazılır.
 
 **Kaldırma** (`Installer.Uninstall`): görevler, kısayollar, kayıt, `ProgramData\EngelsizDPI`,
 `%AppData%\EngelsizDPI` silinir. Çalışan exe kendini silemediği için kurulum klasörünü birkaç saniye sonra silen
@@ -364,10 +383,29 @@ onu eski anlamına göre dönüştürür.
    silinmesine değil yeniden adlandırılmasına izin verir), yeni exe kopyalanır, `--updated` (+ bağlıysa
    `--connect`, pencere gizliyse `--tray`) ile başlatılır, eski süreç kapanır. Kopyalama başarısız olursa eski
    exe geri konur. `.old` ve eski indirmeler `CleanupAsync` ile silinir.
-6. `CanSelfUpdate` yalnızca **tek dosyalık yayınlanmış** exe'de doğrudur (`Assembly.Location` boş).
+6. **Atlanan sürüm:** `StartupHealth`'in bozuk saydığı sürüm (`skipped-version`) denetimde ve bekleyen
+   güncellemelerde yok sayılır. Ondan daha yeni bir sürüm çıkınca normal güncellenir.
+7. `CanSelfUpdate` yalnızca **tek dosyalık yayınlanmış** exe'de doğrudur (`Assembly.Location` boş).
    `dotnet run` ile çalışırken bin klasörüne yazılmaz. `CanCheck` için `Repo` gerekir; derlemede
    `GitHubRepo` MSBuild özelliğinden `AssemblyMetadata` olarak gömülür (varsayılan `Claymore222/EngelsizDPI`,
    CI'da `$GITHUB_REPOSITORY`).
+
+### 10.1 Bozuk sürümden kurtulma (StartupHealth)
+
+Yayınlanan bir sürüm açılışta çöküyorsa kendini güncelleyemez. Bu yüzden kurulu kopya her açılışta
+`Program Files\EngelsizDPI\startup-state` dosyasına `sürüm deneme-sayısı` yazar. Uygulama 10 sn sorunsuz
+çalışınca ya da düzgün kapanınca (tepsiden Çıkış, güncelleme için yeniden başlatma) dosya silinir. Dosyadaki
+sayı, üst üste sağlıklı bitmeyen açılışları gösterir.
+
+- **Otomatik geri dönüş:** Sayı 2'ye ulaşmışsa (üçüncü açılış denemesinde) ve güncellemeden kalan
+  `EngelsizDPI.exe.old` daha eski bir sürümse, `.old` exe'nin yerine konur. Bozuk sürüm atlananlara yazılır ve
+  önceki sürüm başlatılır. `.old`, bu yüzden açılış sağlıklı sayılana kadar silinmez (`CleanupAsync`
+  güncelleme denetimleri başlarken, yani sağlıklı açılıştan sonra çalışır).
+- **Elle kurtulma:** Kullanıcı Releases'ten **eski** bir exe indirip açarsa, kurulu sürüm bozuk sayıldığı için
+  `Installer.Decide` `InstallAndLaunch` der ve eski sürüm onun üzerine kurulur. Normalde eski exe kurulu
+  (yeni) kopyayı açar.
+- **Sınır:** Uygulama `Program.Main`'in bu noktasına gelmeden çöküyorsa (eksik çalışma zamanı, statik
+  başlatma hatası) sayaç artmaz; o durumda tek çare daha yüksek numaralı bir düzeltme yayınlamaktır.
 
 ---
 
@@ -447,7 +485,8 @@ dotnet publish src/EngelsizDPI -c Release -r win-x64 -o publish   # tek dosya ex
 - Tek dosya/self-contained ayarları yalnızca `-r` verilince uygulanır. Aksi hâlde test projesi uygulama
   projesine başvuramaz (NETSDK1151).
 - Proje klasörü taşınamıyor ya da yeniden adlandırılamıyorsa `dotnet build-server shutdown` çalıştırın.
-- **Test kapsamı:** kurulum kararı (`Installer.Decide`), sürüm ayrıştırma, release ayrıştırma, checksum, exe
+- **Test kapsamı:** kurulum kararı (`Installer.Decide`, bozuk kurulu sürüm dahil), açılış sağlığı sayacı ve
+  atlanan sürüm (`StartupHealth`), sürüm ayrıştırma, release ayrıştırma, checksum, exe
   değiştirme (açıkken dahil), paket ayrıştırma ve doğrulama, paket seçimi saklama, host listesi, tarayıcı
   alan adı çıkarma, `IsCovered`, `NormalizeDomain`. Motor, görevler ve arayüz akışları için otomatik test
   **yoktur**; bunlar elle denenir.

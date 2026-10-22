@@ -46,33 +46,52 @@ public static partial class Installer
     public static bool IsRunningInstalled =>
         Environment.ProcessPath is { } exe && PathsEqual(exe, InstalledExe);
 
-    /// <summary>Kurulu kopya var ve bu exe'den eski değil (yani kurulu kopyayı başlatmak yeterli).</summary>
+    /// <summary>Kurulu kopya var, bu exe'den eski değil ve bozuk değil (yani kurulu kopyayı başlatmak yeterli).</summary>
     public static bool IsInstalledAndCurrent() =>
-        ReadVersion(InstalledExe) is { } installed && installed >= UpdateService.CurrentVersion;
+        ReadVersion(InstalledExe) is { } installed && installed >= UpdateService.CurrentVersion && !IsBroken(installed);
 
     /// <summary>Bu açılışta ne yapılacağına karar verir.</summary>
-    public static LaunchAction Decide() => Decide(
-        canInstall: UpdateService.CanSelfUpdate,
-        currentExe: Environment.ProcessPath ?? "",
-        installedExe: InstalledExe,
-        currentVersion: UpdateService.CurrentVersion,
-        installedVersion: ReadVersion(InstalledExe));
+    public static LaunchAction Decide()
+    {
+        var installed = ReadVersion(InstalledExe);
+        return Decide(
+            canInstall: UpdateService.CanSelfUpdate,
+            currentExe: Environment.ProcessPath ?? "",
+            installedExe: InstalledExe,
+            currentVersion: UpdateService.CurrentVersion,
+            installedVersion: installed,
+            installedBroken: installed is not null && IsBroken(installed));
+    }
 
     /// <summary>Karar mantığı (yan etkisiz; test edilebilsin diye ayrı).</summary>
+    /// <param name="installedBroken">
+    /// Kurulu sürüm üst üste açılamadı (bkz. <see cref="StartupHealth"/>): indirilen exe daha eski olsa da onun
+    /// üzerine kurulur; kullanıcı bozuk bir sürümden eski sürümü indirerek kurtulabilsin.
+    /// </param>
     public static LaunchAction Decide(bool canInstall, string currentExe, string installedExe,
-        Version currentVersion, Version? installedVersion)
+        Version currentVersion, Version? installedVersion, bool installedBroken = false)
     {
         if (!canInstall || PathsEqual(currentExe, installedExe)) return LaunchAction.RunHere;
-        return installedVersion is not null && installedVersion >= currentVersion
+        return installedVersion is not null && installedVersion >= currentVersion && !installedBroken
             ? LaunchAction.LaunchInstalled
             : LaunchAction.InstallAndLaunch;
     }
+
+    private static bool IsBroken(Version installed) => StartupHealth.Installed?.IsBroken(installed) == true;
 
     /// <summary>Çalışan exe'yi kurulum klasörüne kopyalar ve kısayolları, kaldırma kaydını oluşturur.</summary>
     public static void Install()
     {
         var source = Environment.ProcessPath ?? throw new InvalidOperationException("Uygulama yolu bulunamadı.");
         Directory.CreateDirectory(InstallDir);
+
+        // Daha yeni kurulu sürümün üzerine kuruluyorsa o sürüm bozuktur (bkz. Decide): bir daha otomatik gelmesin.
+        if (ReadVersion(InstalledExe) is { } previous && previous > UpdateService.CurrentVersion)
+        {
+            StartupHealth.Installed?.Skip(previous);
+            Log.Write($"Kurulu v{previous} açılamıyordu; v{UpdateService.CurrentVersion} üzerine kuruluyor, v{previous} atlanacak");
+        }
+        StartupHealth.Installed?.MarkHealthy();
 
         if (File.Exists(InstalledExe))
         {
@@ -111,7 +130,8 @@ public static partial class Installer
             RegisterUninstallEntry();
             if (!File.Exists(StartMenuShortcut)) CreateShortcut(StartMenuShortcut);
             AutoStart.EnsureLauncher(InstalledExe);
-            // Görev eski adla (v1.1.0) ya da kurulumdan önce indirilen exe'nin yoluyla kayıtlı olabilir.
+            // Görev eski, bütün kullanıcıların ortak adıyla ya da kurulumdan önce indirilen exe'nin yoluyla kayıtlı
+            // olabilir; kullanıcıya özel ada ve kurulu exe'ye taşınır.
             if (AutoStart.IsEnabled()) AutoStart.SetEnabled(true);
 
         }
@@ -205,7 +225,7 @@ public static partial class Installer
         }
     }
 
-    private static Version? ReadVersion(string exe) =>
+    internal static Version? ReadVersion(string exe) =>
         File.Exists(exe) && UpdateService.TryParseVersion(FileVersionInfo.GetVersionInfo(exe).FileVersion, out var v) ? v : null;
 
     private static bool PathsEqual(string a, string b) =>

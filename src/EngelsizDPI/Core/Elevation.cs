@@ -25,13 +25,18 @@ public static class Elevation
     /// <summary>
     /// Yönetici olmayan süreçte çağrılır: uygun yoldan yönetici kopyayı başlatır. Bu süreç ardından kapanmalıdır.
     /// </summary>
-    public static void Elevate(string[] args)
+    /// <param name="args">Uygulamanın argümanları (<see cref="AutoStart.FromTaskArg"/> çıkarılmış).</param>
+    /// <param name="fromTask">Bu süreci Launch görevi başlattı; yine de yönetici değilsek görev bize yetki veremiyor.</param>
+    public static void Elevate(string[] args, bool fromTask)
     {
-        // Görev argüman taşıyamaz; bu yüzden yalnızca argümansız, kurulu kopyanın normal açılışında kullanılır.
-        if (args.Length == 0 && Installer.IsInstalledAndCurrent() && AutoStart.TaskExists(AutoStart.LauncherTask) &&
-            AutoStart.Run(AutoStart.LauncherTask))
+        // Görev değişken argüman taşıyamaz; bu yüzden yalnızca argümansız normal açılışta kullanılır. Kurulu kopyanın
+        // kendisi bozuk sayılsa da görevle açılır: geri dönüşü (StartupHealth) yönetici olarak o yapar.
+        if (!fromTask && args.Length == 0 &&
+            (Installer.IsRunningInstalled || Installer.IsInstalledAndCurrent()) &&
+            AutoStart.TaskExists(AutoStart.LauncherTask) && AutoStart.Run(AutoStart.LauncherTask))
             return;
 
+        if (fromTask) Log.Write("Başlatma görevi yönetici yetkisi vermedi (hesap yönetici değil mi?); UAC isteniyor");
         RelaunchWithUac(args);
     }
 

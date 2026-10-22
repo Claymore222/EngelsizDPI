@@ -27,10 +27,13 @@ internal static class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        var fromTask = args.Contains(AutoStart.FromTaskArg);
+        args = args.Where(a => a != AutoStart.FromTaskArg).ToArray();
+
         // Yönetici değilsek yönetici kopyayı başlatıp çıkarız (kuruluysa UAC sorulmaz).
         if (OperatingSystem.IsWindows() && !Elevation.IsElevated)
         {
-            Elevation.Elevate(args);
+            Elevation.Elevate(args, fromTask);
             return;
         }
 
@@ -61,6 +64,9 @@ internal static class Program
 
         // Daha önce arka planda indirilmiş bir güncelleme varsa arayüz açılmadan uygulanır.
         if (TryApplyPendingUpdate(args)) return;
+
+        // Bu sürüm üst üste açılamadıysa (bozuk sürüm) güncellemeden önceki sürüme dönülür.
+        if (OperatingSystem.IsWindows() && Installer.IsRunningInstalled && TryRollBack(args)) return;
 
         if (OperatingSystem.IsWindows()) Installer.RefreshInstalledState();
 
@@ -177,6 +183,42 @@ internal static class Program
         catch (Exception)
         {
             // Güncelleme uygulanamazsa mevcut sürümle normal şekilde devam edilir.
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Açılışı <see cref="StartupHealth"/>'e kaydeder. Bu sürüm daha önce üst üste açılamadıysa ve güncellemeden
+    /// kalan önceki sürüm (EngelsizDPI.exe.old) duruyorsa ona döner, bu sürümü atlanacaklara ekler ve önceki
+    /// sürümü başlatır. true dönerse bu süreç kapanmalıdır.
+    /// </summary>
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static bool TryRollBack(string[] args)
+    {
+        var health = StartupHealth.Installed!;
+        var current = UpdateService.CurrentVersion;
+        if (health.BeginStartup(current) < StartupHealth.BrokenThreshold) return false;
+
+        var previousExe = Installer.InstalledExe + ".old";
+        if (Installer.ReadVersion(previousExe) is not { } previous || previous >= current)
+        {
+            Log.Write($"v{current} üst üste açılamadı ama dönülecek önceki sürüm yok");
+            return false;
+        }
+
+        try
+        {
+            // ApplyAndRestart, verilen dosyayı exe'nin yerine koyarken mevcut exe'yi .old yapar; kopya üzerinden çalışılır.
+            var copy = Path.Combine(Installer.InstallDir, "rollback.exe");
+            File.Copy(previousExe, copy, overwrite: true);
+            health.Skip(current);
+            Log.Write($"v{current} üst üste açılamadı; v{previous} sürümüne geri dönülüyor");
+            UpdateService.ApplyAndRestart(copy, args.Where(a => a != "--updated"));
+            return true;
+        }
+        catch (Exception e)
+        {
+            Log.Write("Önceki sürüme dönülemedi: " + e.Message);
             return false;
         }
     }

@@ -52,13 +52,25 @@ public partial class App : Application
 
             _vm.Update.PropertyChanged += OnUpdateChanged;
             _vm.Update.RestartRequested += path => _ = RestartForUpdateAsync(path);
-            _vm.Update.StartBackgroundChecks();
+            _ = ConfirmHealthyAsync();
             StartPackRefresh();
 
             _ = _vm.StartupAsync();
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    /// <summary>
+    /// Uygulama bir süre sorunsuz çalışınca açılışı sağlıklı sayar (bkz. <see cref="StartupHealth"/>), ardından
+    /// güncelleme denetimlerini başlatır. Denetim önceki sürümün (.old) yedeğini sildiği için önce sağlık gelir.
+    /// </summary>
+    private async Task ConfirmHealthyAsync()
+    {
+        await Task.Delay(TimeSpan.FromSeconds(10));
+        if (_exiting) return;
+        StartupHealth.MarkCurrentHealthy();
+        _vm!.Update.StartBackgroundChecks();
     }
 
     /// <summary>Site listesini açılıştan kısa süre sonra ve ardından 6 saatte bir GitHub'dan yeniler.</summary>
@@ -135,6 +147,7 @@ public partial class App : Application
         if (_window is not { IsVisible: true }) args.Add("--tray");
 
         _exiting = true;
+        StartupHealth.MarkCurrentHealthy();
         await _vm.DisconnectAsync();
         try
         {
@@ -169,6 +182,8 @@ public partial class App : Application
     {
         if (_exiting) return;
         _exiting = true;
+        // Düzgün kapanış: uygulama çalışıyordu, bu açılış bozuk sayılmaz.
+        StartupHealth.MarkCurrentHealthy();
         if (_vm is not null) await _vm.DisconnectAsync();
         if (_window is not null)
         {

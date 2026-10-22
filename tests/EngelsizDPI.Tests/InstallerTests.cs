@@ -36,4 +36,9 @@ public sealed class InstallerTests
     public void Same_or_older_download_opens_installed_copy(int major, int minor, int build) =>
         Assert.Equal(LaunchAction.LaunchInstalled,
             Installer.Decide(true, Downloaded, Installed, new Version(major, minor, build), V2));
+
+    [Fact]
+    public void Older_download_replaces_broken_installed_copy() =>
+        Assert.Equal(LaunchAction.InstallAndLaunch,
+            Installer.Decide(true, Downloaded, Installed, V1, V2, installedBroken: true));
 }
