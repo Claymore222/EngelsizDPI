@@ -183,9 +183,13 @@
 
       <!-- Başlık -->
       <Grid ColumnDefinitions="Auto,*,Auto">
-        <Border Width="32" Height="32" CornerRadius="7" Background="{DynamicResource AccentBrush}">
-          <PathIcon Width="18" Height="18" Foreground="{DynamicResource OnAccentBrush}" Data="{DynamicResource ShieldIcon}" />
-        </Border>
+        <Viewbox Width="32" Height="32">
+          <Canvas Width="100" Height="100">
+            <Rectangle Width="100" Height="100" RadiusX="22" RadiusY="22" Fill="{DynamicResource AccentBrush}" />
+            <Path Data="{DynamicResource LogoGlyph}" Stroke="{DynamicResource OnAccentBrush}" StrokeThickness="10"
+                  StrokeLineCap="Round" StrokeJoin="Round" />
+          </Canvas>
+        </Viewbox>
         <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
           <TextBlock Text="EngelsizDPI" FontSize="16" FontWeight="SemiBold" />
           <TextBlock Classes="muted" Text="GoodbyeDPI + güvenli DNS" />

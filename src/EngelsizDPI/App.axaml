@@ -128,6 +128,9 @@
       </ResourceDictionary.ThemeDictionaries>
 
       <!-- Material Design Icons (Apache-2.0) -->
+      <!-- Logo: "geçit" — zemin, kemer ve zemin tek çizgi. 100 birimlik kare içinde, 10 birim kalınlıkta çizilir
+           (yuvarlak uç ve dönüşlerle). Dolgu değil çizgi geometrisidir; PathIcon ile değil Path ile kullanılır. -->
+      <StreamGeometry x:Key="LogoGlyph">M16,76 H31 V46 A19,19 0 0 1 69,46 V76 H84</StreamGeometry>
       <StreamGeometry x:Key="ShieldIcon">M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M10,17L6,13L7.41,11.59L10,14.17L16.59,7.58L18,9L10,17Z</StreamGeometry>
       <StreamGeometry x:Key="ShieldOutlineIcon">M21,11C21,16.55 17.16,21.74 12,23C6.84,21.74 3,16.55 3,11V5L12,1L21,5V11M12,21C15.75,20 19,15.54 19,11.22V6.3L12,3.18L5,6.3V11.22C5,15.54 8.25,20 12,21Z</StreamGeometry>
       <StreamGeometry x:Key="ShieldAlertIcon">M21,11C21,16.55 17.16,21.74 12,23C6.84,21.74 3,16.55 3,11V5L12,1L21,5V11M12,21C15.75,20 19,15.54 19,11.22V6.3L12,3.18L5,6.3V11.22C5,15.54 8.25,20 12,21M11,7H13V13H11V7M11,15H13V17H11V15Z</StreamGeometry>

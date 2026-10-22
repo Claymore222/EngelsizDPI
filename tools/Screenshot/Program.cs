@@ -14,10 +14,10 @@ AppBuilder.Configure<App>()
     .WithInterFont()
     .SetupWithoutStarting();
 
-void Shot(string name, Action<MainViewModel> setup, int height = 1180, string theme = AppTheme.Dark)
+void Shot(string name, Action<MainViewModel> setup, int height = 1180, string theme = AppTheme.Dark, AppSettings? settings = null)
 {
     AppTheme.Apply(theme);
-    var vm = new MainViewModel(null, new AppSettings { DisabledPacks = [], CustomDomains = ["reddit.com"] });
+    var vm = new MainViewModel(null, settings ?? new AppSettings { DisabledPacks = [], CustomDomains = ["reddit.com"] });
     setup(vm);
     var w = new MainWindow { DataContext = vm, Width = 460, Height = height };
     w.Show();
@@ -78,3 +78,24 @@ Shot("catalog", vm =>
     Set(vm, ConnectionState.On, "Bağlı", "Standart yöntem · 3 site açık", PackStatus.Open, PackStatus.Open, PackStatus.Open);
     vm.ToggleCatalogCommand.Execute(null);
 });
+
+// README görselleri: özel site yok, Wattpad açık; sürüm yazısı derlemeye -p:Version ile verilir.
+AppSettings ReadmeSettings() => new() { DisabledPacks = [], EnabledPacks = ["wattpad"] };
+void Readme(MainViewModel vm)
+{
+    Set(vm, ConnectionState.On, "Bağlı", "Standart yöntemi · 3 site açık", PackStatus.Open, PackStatus.Open, PackStatus.Open);
+    vm.Update.StatusText = $"Güncel · v{UpdateService.CurrentVersion}";
+}
+Shot("readme-koyu", Readme, 900, AppTheme.Dark, ReadmeSettings());
+Shot("readme-acik", Readme, 900, AppTheme.Light, ReadmeSettings());
+Shot("readme-paketler", vm => { Readme(vm); vm.ToggleCatalogCommand.Execute(null); }, 900, AppTheme.Dark, ReadmeSettings());
+
+// Tepsi ikonları (her durum için)
+var trayIcon = typeof(App).GetMethod("DrawStatusIcon", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
+foreach (var state in new[] { ConnectionState.Off, ConnectionState.Busy, ConnectionState.On, ConnectionState.Warning, ConnectionState.Error })
+{
+    using var icon = (Avalonia.Media.Imaging.RenderTargetBitmap)trayIcon.Invoke(null, [state])!;
+#pragma warning disable CS0618 // Geliştirme aracı; PNG varsayılanı yeterli.
+    icon.Save(Path.Combine(outDir, $"tray-{state}.png"));
+#pragma warning restore CS0618
+}

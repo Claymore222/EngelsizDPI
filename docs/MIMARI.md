@@ -484,7 +484,11 @@ sayı, üst üste sağlıklı bitmeyen açılışları gösterir.
   **adları değil sayısı** yazılır ve yollardaki Windows kullanıcı adı silinir. Günlük dosyası otomatik eklenmez;
   form, kullanıcının isterse sürükleyip bırakabileceğini (ve içinde site adları olduğunu) söyler. Kullanıcı
   göndermeden önce her şeyi görür.
-- **Tepsi:** durum rengine boyanmış kalkan ikonu (`Views/Converters.cs` → `Palette`). Menü: Bağlan/Bağlantıyı
+- **Logo:** "geçit" — kiremit karo üzerinde zemin + kemer + zemin tek çizgi (`App.axaml` → `LogoGlyph`, 100
+  birimlik kare, 10 birim çizgi, yuvarlak uç/dönüş). Exe ikonu `Assets/app.ico` (16–256 px), README görseli
+  `docs/images/logo.png`. İkisi de aynı geometriden üretildi; logo değişirse üçü birlikte güncellenmeli.
+- **Tepsi:** logo; karonun rengi durumu gösterir (kapalı gri, bağlanıyor mavi, bağlı kiremit, kısmen açık/hata
+  kırmızı; `Views/Converters.cs` → `Palette`). Durum kartındaki kalkan ikonları ayrıdır (durum simgesi, logo değil). Menü: Bağlan/Bağlantıyı
   kes, Göster, güncelleme (varsa), Çıkış.
 - **Tema:** `App.axaml` → `ThemeDictionaries` (Dark/Light). Pencerede sabit renk yoktur; her şey
   `DynamicResource` ile gelir. Sistem / Açık / Koyu seçimi `AppTheme.Apply`.
@@ -504,8 +508,10 @@ Ayarlar sadeliği. Tüm metinler Türkçe.
 - **Linkler** `Shell.OpenUrl` ile `explorer.exe` üzerinden açılır. Uygulama yönetici olduğu için doğrudan
   başlatılan tarayıcı da yönetici olurdu. Günlük Notepad ile açılır.
 - **Ekran görüntüsü aracı** (`tools/Screenshot`): Avalonia Headless ile pencereyi farklı durumlarda (bağlı,
-  hata, ekleme paneli, katalog, güncelleme bantları, açık tema) PNG olarak kaydeder. Motor çalıştırılmaz,
-  yönetici gerekmez. Arayüz değişikliğinden sonra mutlaka çalıştırıp bakın.
+  hata, ekleme paneli, katalog, güncelleme bantları, açık tema) ve tepsi ikonlarını PNG olarak kaydeder. Motor
+  çalıştırılmaz, yönetici gerekmez. Arayüz değişikliğinden sonra mutlaka çalıştırıp bakın.
+- **README görselleri** (`docs/images/ekran-*.png`) aynı araçtaki `readme-*` görüntülerinden kırpılır; sürüm
+  yazısı için araç `-p:Version=X.Y.Z` ile çalıştırılır. Arayüz belirgin değişirse yenilenmeli.
 
 ---
 

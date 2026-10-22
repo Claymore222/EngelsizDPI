@@ -18,6 +18,9 @@ public static class Palette
     public static readonly Color Busy = Color.Parse("#9CC3F0");
     public static readonly Color Error = Color.Parse("#EF6B85");
 
+    /// <summary>Logo çizgisinin rengi (her durum renginin üstünde okunur).</summary>
+    public static readonly Color OnTile = Color.Parse("#2A0E04");
+
     public static Color For(ConnectionState state) => state switch
     {
         ConnectionState.On => Accent,

@@ -195,20 +195,25 @@ public partial class App : Application
         _desktop?.Shutdown();
     }
 
-    /// <summary>Tepsi ikonu: durum rengine boyanmış kalkan.</summary>
-    private static WindowIcon CreateStatusIcon(ConnectionState state)
+    /// <summary>Tepsi ikonu: logo; zemini durum rengine boyanır (bağlı = kiremit, bağlanıyor = mavi, hata = kırmızı).</summary>
+    private static WindowIcon CreateStatusIcon(ConnectionState state) => new(DrawStatusIcon(state));
+
+    /// <summary>Tepsi ikonunun görüntüsü (ekran görüntüsü aracı da bunu kullanır).</summary>
+    private static RenderTargetBitmap DrawStatusIcon(ConnectionState state)
     {
         const int size = 64;
         var bitmap = new RenderTargetBitmap(new PixelSize(size, size));
         using (var ctx = bitmap.CreateDrawingContext())
         {
-            var shield = (Geometry)Current!.FindResource("ShieldIcon")!;
-            using (ctx.PushTransform(Matrix.CreateScale(size / 24.0, size / 24.0)))
+            var glyph = (Geometry)Current!.FindResource("LogoGlyph")!;
+            // Tepsi küçük olduğu için çizgi pencere logosundakinden biraz kalın.
+            var pen = new Pen(new SolidColorBrush(Palette.OnTile), 12, lineCap: PenLineCap.Round, lineJoin: PenLineJoin.Round);
+            using (ctx.PushTransform(Matrix.CreateScale(size / 100.0, size / 100.0)))
             {
-                ctx.DrawGeometry(new SolidColorBrush(Palette.For(state)), null, shield);
+                ctx.DrawRectangle(new SolidColorBrush(Palette.For(state)), null, new RoundedRect(new Rect(0, 0, 100, 100), 22));
+                ctx.DrawGeometry(null, pen, glyph);
             }
         }
-
-        return new WindowIcon(bitmap);
+        return bitmap;
     }
 }

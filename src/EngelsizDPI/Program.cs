@@ -24,12 +24,15 @@ internal static class Program
     /// <summary>Kurulum/kaldırma, çalışan kopyanın kapanmasını istediğinde tetiklenir.</summary>
     public static event Action? ExitRequested;
 
+    /// <summary>Güvenli çıkarma klasörüyle yeniden başlatılan kopyanın argümanı (bkz. NativeExtraction).</summary>
+    internal const string RelaunchArg = "--secure-runtime";
+
     [STAThread]
     public static void Main(string[] args)
     {
         var fromTask = args.Contains(AutoStart.FromTaskArg);
-        var relaunched = args.Contains(NativeExtraction.RelaunchArg);
-        args = args.Where(a => a != AutoStart.FromTaskArg && a != NativeExtraction.RelaunchArg).ToArray();
+        var relaunched = args.Contains(RelaunchArg);
+        args = args.Where(a => a != AutoStart.FromTaskArg && a != RelaunchArg).ToArray();
 
         // Yönetici değilsek yönetici kopyayı başlatıp çıkarız (kuruluysa UAC sorulmaz).
         if (OperatingSystem.IsWindows() && !Elevation.IsElevated)

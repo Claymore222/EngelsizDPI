@@ -20,9 +20,6 @@ internal static partial class NativeExtraction
 {
     private const string Variable = "DOTNET_BUNDLE_EXTRACT_BASE_DIR";
 
-    /// <summary>Yeniden başlatılan kopyanın argümanı: değişken bir sebeple ulaşmazsa sonsuz döngüye girilmez.</summary>
-    public const string RelaunchArg = "--secure-runtime";
-
     public static string SecureDir => Path.Combine(Installer.InstallDir, "runtime");
 
     /// <summary>Gerekiyorsa kendini güvenli çıkarma klasörüyle yeniden başlatır; true dönerse bu süreç kapanmalıdır.</summary>
@@ -39,7 +36,7 @@ internal static partial class NativeExtraction
             Directory.CreateDirectory(SecureDir);
             var psi = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = false };
             foreach (var a in args) psi.ArgumentList.Add(a);
-            psi.ArgumentList.Add(RelaunchArg);
+            psi.ArgumentList.Add(Program.RelaunchArg); // Değişken ulaşmazsa ikinci kez yeniden başlatılmaz.
             psi.Environment[Variable] = SecureDir;
             // Bu süreç ön plana gelme hakkını yeni sürece devreder; yoksa pencere arkada açılabilir.
             AllowSetForegroundWindow(-1);
