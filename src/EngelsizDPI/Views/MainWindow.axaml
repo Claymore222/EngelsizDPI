@@ -453,9 +453,12 @@
       </Border>
 
       <!-- Alt bilgi -->
-      <Grid ColumnDefinitions="Auto,*,Auto" Margin="4,14,0,0">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto" Margin="4,14,0,0">
         <TextBlock Classes="muted" Text="{Binding AppVersion}" VerticalAlignment="Center" />
-        <Button Grid.Column="2" Classes="link quiet" FontSize="12" Content="Günlük" Command="{Binding OpenLogCommand}"
+        <Button Grid.Column="2" Classes="link quiet" FontSize="12" Margin="0,0,14,0" Content="Sorun bildir" Command="{Binding ReportProblemCommand}"
+                IsVisible="{Binding CanSuggest}"
+                ToolTip.Tip="GitHub'da, uygulamanın durumuyla doldurulmuş bir sorun formu açar. Göndermeden önce görürsünüz." />
+        <Button Grid.Column="3" Classes="link quiet" FontSize="12" Content="Günlük" Command="{Binding OpenLogCommand}"
                 ToolTip.Tip="Sorun bildirirken bu dosyayı ekleyin" />
       </Grid>
     </StackPanel>

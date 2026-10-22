@@ -5,6 +5,12 @@ namespace EngelsizDPI.Core;
 public sealed class AppSettings
 {
     public string ProfileId { get; set; } = Profiles.Default.Id;
+
+    /// <summary>
+    /// Yöntem bu bilgisayarda doğrulandı mı (siteler açıldı, Otomatik bul çalıştı ya da kullanıcı kendisi seçti)?
+    /// false iken ilk bağlantıda siteler açılmazsa Otomatik bul kendiliğinden bir kez çalışır.
+    /// </summary>
+    public bool ProfileConfirmed { get; set; }
     /// <summary>Kullanıcının açıkça açtığı paketler.</summary>
     public List<string> EnabledPacks { get; set; } = [];
 

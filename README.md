@@ -5,7 +5,8 @@
 Türkiye'de erişime kapatılan **Discord**, **Roblox** ve eklediğiniz diğer sitelere VPN kullanmadan, internet hızınızı düşürmeden erişmenizi sağlayan, sistem tepsisinde çalışan bir Windows uygulaması. Arka planda [GoodbyeDPI](https://github.com/ValdikSS/GoodbyeDPI) motorunu ve güvenli DNS yönlendirmesini kullanır; siyah komut pencereleri ve `.cmd` dosyalarıyla uğraşmanıza gerek kalmaz.
 
 - **Tek tık:** Büyük düğmeye basın; uygulama bağlanır ve siteleri kendisi test eder.
-- **Otomatik bul:** Bir yöntem sizin operatörünüzde çalışmazsa bütün yöntemleri sırayla dener ve çalışanı seçer.
+- **Otomatik bul:** Varsayılan yöntem sizin operatörünüzde çalışmazsa ilk bağlantıda bütün yöntemleri kendiliğinden sırayla dener ve çalışanı seçer.
+- **Kendini kontrol eder:** Bağlıyken siteleri arada bir, ağ değişince ve uykudan uyanınca yeniden test eder; kapanan olursa kendiliğinden yeniden bağlanır.
 - **Sadece seçtiğiniz siteler:** Engel aşma yalnızca listedeki sitelere uygulanır. Oyunlar ve diğer uygulamalar etkilenmez.
 - **Güvenli DNS:** DNS sorguları operatörün araya giremediği Yandex DNS'e (port 1253) yönlendirilir. Windows DNS ayarlarınıza dokunulmaz.
 - **Sistemi kirletmez:** Kalıcı bir servis kurulmaz. Uygulamayı kapattığınızda her şey eski hâline döner.
@@ -74,6 +75,9 @@ Hangisinin çalışacağını bilmiyorsanız **Otomatik bul** düğmesini kullan
 Bilgisayarınızda GoodbyeDPI-Turkey servisi ya da DNSChanger kuruluysa EngelsizDPI bunu fark eder ve bir uyarı gösterir. **Düzelt** düğmesi eski servisi ve başlangıç görevini kaldırır. İki araç aynı anda çalışırsa birbirini bozar.
 
 ## Sık sorulanlar
+
+**Bir site açılmıyor ya da bir sorun var.**
+Uygulamanın altındaki **Sorun bildir** düğmesine basın. GitHub'da uygulamanın durumuyla doldurulmuş bir form açılır; ne olduğunu yazıp gönderin. Eklediğiniz sitelerin adları forma yazılmaz.
 
 **Discord tarayıcıda açılıyor ama uygulaması açılmıyor.**
 "Otomatik bul"u deneyin. Olmazsa Discord'u tamamen kapatıp (tepsiden de) yeniden açın.

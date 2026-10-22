@@ -105,6 +105,7 @@ global.json                       Test çalıştırıcısı: Microsoft.Testing.P
 packs/packs.json                  Hazır site paketleri (uzaktan güncellenir, exe'ye de gömülür)
 .github/workflows/release.yml     Sürüm yayını
 .github/ISSUE_TEMPLATE/site-onerisi.yml   "Herkese öner" düğmesinin açtığı form
+.github/ISSUE_TEMPLATE/sorun-bildirimi.yml "Sorun bildir" düğmesinin açtığı form
 src/EngelsizDPI/
   Program.cs                      Giriş noktası: yetki, kurulum, tek kopya, bekleyen güncelleme
   App.axaml(.cs)                  Tema kaynakları, tepsi ikonu, uygulama yaşam döngüsü
@@ -120,6 +121,7 @@ src/EngelsizDPI/
     IBypassEngine.cs              Motor arayüzü + EngineFactory
     ConnectivityTester.cs         Sitenin gerçekten açılıp açılmadığını ölçer
     SecureDns.cs                  Güvenli DNS sunucusu sabitleri, sunucuyu sınama, internet var mı kontrolü
+    ProblemReport.cs              "Sorun bildir": durum metni ve önceden doldurulmuş GitHub form adresi
     Profiles.cs                   Yöntemler
     SitePacks.cs                  Paket kataloğu: ayrıştırma, doğrulama, uzaktan yenileme
     SiteScanner.cs                Eklenen sitenin kullandığı engelli alan adlarını bulur
@@ -322,6 +324,14 @@ o anda bir işlem yapıyorsa (`_gate` meşgul) o tur atlanır.
 Tepsi ikonu "Kısmen açık" durumunda da hata rengine döner; pencere kapalıyken kullanıcı bunu yalnızca oradan
 görür.
 
+**İlk bağlantı** (`ConfirmProfileAsync`): `ProfileConfirmed` false iken kullanıcı bağlandığında (anahtar ya da
+açılışta otomatik bağlanma) varsayılan yöntem etkin paketlerin hepsini açmazsa Otomatik bul kendiliğinden bir
+kez çalışır. Seçilen yöntem değiştiyse bilgi bandı gösterilir. Sonuç ne olursa olsun `ProfileConfirmed = true`
+olur; Otomatik bul her bağlanışta tekrar çalışmaz. İstisnalar: motor hiç başlamadıysa ya da hiçbir site
+açılmadı ve internet yoksa karar verilmez (bir sonraki bağlantıda tekrar bakılır). Kullanıcının elle yöntem
+seçmesi ve Otomatik bul da yöntemi doğrulanmış sayar. Eski kullanıcılarda alan yoktur (false); siteleri zaten
+açıksa ilk bağlantıda yalnızca doğrulanmış olarak işaretlenir.
+
 **Otomatik bul:** Bütün profilleri sırayla dener, en çok paketi açanı seçer, tamamı açılınca durur. Seçimi
 kaydeder; döngü tam başarı olmadan bittiyse motoru en iyi profille yeniden başlatır.
 
@@ -441,7 +451,13 @@ sayı, üst üste sağlıklı bitmeyen açılışları gösterir.
   tepsi menüsünden yapılır (`ShutdownMode.OnExplicitShutdown`).
 - **Bölümler:** başlık (logo + güncelleme durumu düğmesi), bilgi/güncelleme/çakışma bantları, durum kartı
   (büyük anahtar), Siteler, Yöntem (+ Otomatik bul), Ayarlar (Tema, Windows açılınca başlat, Açılışta otomatik
-  bağlan, Güvenli DNS, Otomatik güncelle), alt bilgi (sürüm, Günlük).
+  bağlan, Güvenli DNS, Otomatik güncelle), alt bilgi (sürüm, Sorun bildir, Günlük).
+- **Sorun bildir** (`ProblemReport`): GitHub'da `sorun-bildirimi.yml` formunu açar; "Durum bilgisi" alanı
+  önceden doldurulur. İçerik: uygulama ve Windows sürümü, durum, yöntem, güvenli DNS durumu, hazır paketlerin
+  test sonuçları, son GoodbyeDPI çıktısı ve çakışma. Form herkese açık olduğu için kullanıcının eklediği sitelerin
+  **adları değil sayısı** yazılır ve yollardaki Windows kullanıcı adı silinir. Günlük dosyası otomatik eklenmez;
+  form, kullanıcının isterse sürükleyip bırakabileceğini (ve içinde site adları olduğunu) söyler. Kullanıcı
+  göndermeden önce her şeyi görür.
 - **Tepsi:** durum rengine boyanmış kalkan ikonu (`Views/Converters.cs` → `Palette`). Menü: Bağlan/Bağlantıyı
   kes, Göster, güncelleme (varsa), Çıkış.
 - **Tema:** `App.axaml` → `ThemeDictionaries` (Dark/Light). Pencerede sabit renk yoktur; her şey
@@ -472,6 +488,7 @@ Ayarlar sadeliği. Tüm metinler Türkçe.
 | Alan | Varsayılan | Anlam |
 |---|---|---|
 | `ProfileId` | `standard` | Seçili yöntem |
+| `ProfileConfirmed` | false | Yöntem bu bilgisayarda doğrulandı mı (ilk bağlantıda Otomatik bul için) |
 | `EnabledPacks` / `DisabledPacks` | `[]` | Varsayılandan farklı paket seçimleri |
 | `CustomDomains` | `[]` | Kullanıcının eklediği alan adları |
 | `DnsRedirect` | true | Güvenli DNS (Yandex:1253) |

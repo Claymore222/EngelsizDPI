@@ -1,0 +1,43 @@
+name: Sorun bildirimi
+description: EngelsizDPI çalışmıyor ya da bir site açılmıyor
+title: "Sorun: "
+labels: ["sorun"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        EngelsizDPI'daki **"Sorun bildir"** düğmesi aşağıdaki durum bilgisini sizin için doldurur.
+        Bu sayfa **herkese açıktır**; göndermeden önce paylaşmak istemediğiniz bir şey varsa silin.
+  - type: textarea
+    id: aciklama
+    attributes:
+      label: Ne oldu?
+      description: Hangi site ya da uygulama açılmıyor, ne zamandan beri, ne denediniz (Otomatik bul, başka yöntem…)?
+      placeholder: Discord uygulaması açılmıyor, tarayıcıda açılıyor. Otomatik bul'u denedim…
+    validations:
+      required: true
+  - type: dropdown
+    id: operator
+    attributes:
+      label: İnternet sağlayıcınız
+      options:
+        - Türk Telekom
+        - Turkcell Superonline
+        - Vodafone
+        - Türknet
+        - Millenicom
+        - Mobil hat (Turkcell / Vodafone / Türk Telekom)
+        - Diğer
+    validations:
+      required: true
+  - type: textarea
+    id: durum
+    attributes:
+      label: Durum bilgisi
+      description: Uygulama tarafından dolduruldu.
+      render: text
+  - type: markdown
+    attributes:
+      value: |
+        **Günlük dosyası (isteğe bağlı):** Uygulamanın altındaki **Günlük** düğmesi dosyayı açar. Dosyayı bu
+        sayfaya sürükleyip bırakabilirsiniz. İçinde eklediğiniz sitelerin adları da görünür; istemiyorsanız eklemeyin.

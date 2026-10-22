@@ -10,7 +10,9 @@ kodda bilinen ama henüz düzeltilmemiş zayıflıklardır. Her başlıkta hangi
 
 ## 0. Teşhis araçları
 
-Bir sorun bildirildiğinde ilk bakılacak yerler:
+Kullanıcılar sorunu uygulamadaki **Sorun bildir** düğmesiyle gönderir. Issue'daki "Durum bilgisi" bloğunda
+sürüm, Windows, durum, yöntem, güvenli DNS durumu, hangi hazır paketin açılıp açılmadığı, son GoodbyeDPI çıktısı
+ve çakışma bulunur; operatör seçimi de formda zorunludur. Ardından ilk bakılacak yerler:
 
 | Araç | Ne söyler |
 |---|---|
@@ -102,6 +104,10 @@ Bir sorun bildirildiğinde ilk bakılacak yerler:
 ## 2. Operatör tarafındaki değişiklikler
 
 ### 2.1 Siteler "Kısmen açık" ya da hiç açılmıyor, Otomatik bul da çözmüyor — *her an olabilir*
+
+> İlk bağlantıda (ve sağlık denetiminde siteler kapanınca) Otomatik bul zaten kendiliğinden çalışır. Bu başlık,
+> o da çözemediğinde geçerlidir. Aynı operatörden birden fazla bildirim geliyorsa büyük ihtimalle operatör
+> yöntem değiştirmiştir.
 
 - **Neden:** Operatör DPI yöntemini değiştirdi (yeni bir parçalama/TTL davranışı, farklı cihaz).
 - **Çözüm adımları:**

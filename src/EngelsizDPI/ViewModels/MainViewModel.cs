@@ -390,6 +390,7 @@ public sealed partial class MainViewModel : ObservableObject
     {
         if (_loading) return;
         _settings.ProfileId = value.Id;
+        _settings.ProfileConfirmed = true; // Kullanıcının kendi seçimi; Otomatik bul onu ezmesin.
         SaveAndReconnect();
     }
 
@@ -450,12 +451,39 @@ public sealed partial class MainViewModel : ObservableObject
         await _gate.WaitAsync();
         try
         {
-            await ConnectCoreAsync(SelectedProfile);
+            var opened = await ConnectCoreAsync(SelectedProfile);
+            await ConfirmProfileAsync(opened);
         }
         finally
         {
             _gate.Release();
         }
+    }
+
+    /// <summary>
+    /// İlk bağlantı: varsayılan yöntem bu operatörde siteleri açmıyorsa Otomatik bul kendiliğinden bir kez çalışır;
+    /// başka operatördeki kullanıcı "Kısmen açık" görüp ne yapacağını aramak zorunda kalmasın. Sonuç ne olursa
+    /// olsun yöntem doğrulanmış sayılır; Otomatik bul her bağlanışta tekrar çalışmaz.
+    /// </summary>
+    private async Task ConfirmProfileAsync(int opened)
+    {
+        // Motor hiç başlamadıysa (hata) yöntem hakkında bir şey öğrenilmedi.
+        if (_settings.ProfileConfirmed || opened < 0) return;
+
+        if (opened < ActivePacks().Count)
+        {
+            // İnternet yokken bütün yöntemler başarısız görünür; bağlantı gelince sonraki açılışta denenir.
+            if (opened == 0 && !await SecureDns.IsOnlineAsync()) return;
+
+            var before = SelectedProfile;
+            Log.Write($"İlk bağlantı: {before.Name} yöntemi siteleri açmadı, Otomatik bul çalışıyor");
+            await AutoFindCoreAsync();
+            if (SelectedProfile != before)
+                Notice = $"Bağlantınızda en iyi çalışan yöntem otomatik olarak seçildi: {SelectedProfile.Name}.";
+        }
+
+        _settings.ProfileConfirmed = true;
+        _settings.Save();
     }
 
     /// <summary>Yöntemleri sırayla dener ve etkin sitelerin hepsini açan ilkini seçer.</summary>
@@ -497,6 +525,9 @@ public sealed partial class MainViewModel : ObservableObject
         }
         // Döngü tam başarı olmadan bittiyse motor son denenen yöntemle çalışıyordur.
         if (best != lastTried) await ConnectCoreAsync(best);
+
+        _settings.ProfileConfirmed = true;
+        _settings.Save();
     }
 
     // ---- Sağlık denetimi ----
@@ -613,6 +644,28 @@ public sealed partial class MainViewModel : ObservableObject
 
     [RelayCommand]
     private void DismissNotice() => Notice = null;
+
+    /// <summary>GitHub'da uygulamanın durumuyla doldurulmuş bir sorun formu açar (bkz. <see cref="ProblemReport"/>).</summary>
+    [RelayCommand]
+    private void ReportProblem()
+    {
+        if (UpdateService.Repo is not { } repo) return;
+        var snapshot = new ProblemSnapshot(
+            StatusText, StatusDetail, SelectedProfile, DnsRedirect, _secureDnsActive && IsConnected,
+            Packs.Where(p => !p.IsCustom && p.Enabled).Select(p => (p.Name, p.Status switch
+            {
+                PackStatus.Open => "açık",
+                PackStatus.Blocked => "açılmadı",
+                PackStatus.Testing => "test ediliyor",
+                _ => "test edilmedi",
+            })).ToList(),
+            Packs.Count(p => p.IsCustom),
+            _engine?.LastOutputLine(),
+            ConflictText);
+        var failing = Packs.Where(p => !p.IsCustom && p.IsBlocked).Select(p => p.Name).ToList();
+        var title = failing.Count > 0 ? $"Sorun: {string.Join(", ", failing)} açılmıyor" : "Sorun: ";
+        Shell.OpenUrl(ProblemReport.IssueUrl(repo, title, ProblemReport.Describe(snapshot, UpdateService.CurrentVersion)));
+    }
 
     [RelayCommand]
     private static void OpenLog()
