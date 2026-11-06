@@ -14,7 +14,9 @@ public sealed record SitePack(
     string Category,
     [property: JsonPropertyName("test")] string TestUrl,
     IReadOnlyList<string> Domains,
-    bool Default = false);
+    bool Default = false,
+    // UDP DNS ile çözülemeyen adlar; bağlıyken DoH ile çözülüp hosts'a yazılır (bkz. DnsPins).
+    IReadOnlyList<string>? Pin = null);
 
 public sealed record PackCatalog(int Revision, IReadOnlyList<SitePack> Packs);
 
@@ -62,9 +64,13 @@ public static class SitePacks
             // Test adresi paketin kendi alan adlarından biri olmalı; liste uygulamaya başka sunuculara istek attıramaz.
             if (!SiteScanner.IsCovered(test.IdnHost, domains))
                 throw new FormatException($"{p.Id}: test adresi paketin alan adlarından birinde olmalı.");
+            // hosts'a yazılacak adlar da paketin alan adlarında olmalı; liste başka sitelerin DNS'ini değiştiremez.
+            var pin = (p.Pin ?? []).Select(d => d.Trim().ToLowerInvariant()).Distinct().ToList();
+            if (pin.Count > 10 || pin.Any(d => !IsValidDomain(d) || !SiteScanner.IsCovered(d, domains)))
+                throw new FormatException($"{p.Id}: pin adları geçersiz.");
 
             packs.Add(new SitePack(p.Id.Trim().ToLowerInvariant(), p.Name.Trim(), p.Category?.Trim() is { Length: > 0 } c ? c : "Diğer",
-                test.ToString(), domains, p.Default));
+                test.ToString(), domains, p.Default, pin));
         }
         if (packs.Select(p => p.Id).Distinct().Count() != packs.Count) throw new FormatException("Aynı kimlikte iki paket var.");
         return new PackCatalog(raw.Revision, packs);
@@ -149,5 +155,6 @@ public static class SitePacks
         public bool Default { get; set; }
         public string? Test { get; set; }
         public List<string>? Domains { get; set; }
+        public List<string>? Pin { get; set; }
     }
 }

@@ -1,5 +1,5 @@
 {
-  "revision": 3,
+  "revision": 4,
   "packs": [
     {
       "id": "discord",
@@ -29,6 +29,9 @@
       "domains": [
         "roblox.com",
         "rbxcdn.com"
+      ],
+      "pin": [
+        "tr.rbxcdn.com"
       ]
     },
     {

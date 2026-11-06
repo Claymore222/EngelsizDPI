@@ -447,6 +447,16 @@
               <ToggleSwitch Grid.Column="1" IsChecked="{Binding DnsRedirect}" />
             </Grid>
           </Border>
+          <Border Classes="row">
+            <Grid ColumnDefinitions="*,Auto">
+              <StackPanel VerticalAlignment="Center" Margin="0,9" Spacing="2">
+                <TextBlock Text="Tüm siteler (filtresiz)" />
+                <TextBlock Classes="muted" TextWrapping="Wrap" Margin="0,0,12,0"
+                           Text="Listeye bakmadan yöntemi her bağlantıya uygular. Listede olmayan bir site açılmıyorsa deneyin" />
+              </StackPanel>
+              <ToggleSwitch Grid.Column="1" IsChecked="{Binding AllSites}" />
+            </Grid>
+          </Border>
           <Border Classes="row last" IsVisible="{Binding Update.CanCheck}">
             <Grid ColumnDefinitions="*,Auto">
               <TextBlock Text="Otomatik güncelle" VerticalAlignment="Center" />

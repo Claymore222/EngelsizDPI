@@ -372,7 +372,7 @@ bağdaştırıcısının hazır olmasını 30 sn'ye kadar bekleyip bağlanır.
 
 ```json
 {
-  "revision": 3,
+  "revision": 4,
   "packs": [
     { "id": "discord", "name": "Discord", "category": "Sohbet", "default": true,
       "test": "https://discord.com/api/v9/gateway",
@@ -385,6 +385,10 @@ bağdaştırıcısının hazır olmasını 30 sn'ye kadar bekleyip bağlanır.
 - `test`: https olmalı ve **engelli alan adının kendisine** işaret etmeli; açık bir adres seçilirse test her
   zaman "açık" der.
 - `default`: true ise yeni kullanıcılarda açık gelir.
+- `pin` (isteğe bağlı, en fazla 10, paketin alan adlarından biri olmalı): UDP DNS ile çözülmeyen adlar. Bağlanınca
+  ve her sağlık denetiminde DoH ile (`1.1.1.1`, olmazsa `8.8.8.8`, IP üzerinden) çözülüp hosts dosyasının
+  `# >>> EngelsizDPI` … `# <<< EngelsizDPI` bölümüne yazılır; bağlantı kesilince/kaldırılınca bölüm silinir
+  (`DnsPins`). Örnek: `tr.rbxcdn.com` (Roblox avatar resimleri) Yandex dahil bütün UDP sunucularında boş dönüyor.
 - Doğrulama (`SitePacks.Parse`): en fazla 200 paket, paket başına en fazla 100 alan adı, tekrar eden id yok,
   geçerli DNS adları. Bozuk JSON reddedilir, eldeki liste kullanılmaya devam eder.
 
@@ -524,6 +528,7 @@ Ayarlar sadeliği. Tüm metinler Türkçe.
 | `EnabledPacks` / `DisabledPacks` | `[]` | Varsayılandan farklı paket seçimleri |
 | `CustomDomains` | `[]` | Kullanıcının eklediği alan adları |
 | `DnsRedirect` | true | Güvenli DNS (Yandex:1253) |
+| `AllSites` | false | Filtresiz mod: `--blacklist` verilmez, yöntem tüm bağlantılara uygulanır |
 | `ConnectOnLaunch` | true | Açılışta bağlan |
 | `AutoUpdate` | true | Arka planda indir, sonraki açılışta kur |
 | `Theme` | `system` | `system` / `light` / `dark` |

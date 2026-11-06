@@ -51,18 +51,41 @@ internal static partial class NativeExtraction
     }
 
     /// <summary>
-    /// Eski sürümlerin çıkardığı klasörleri siler. Kullanımdaki klasörün DLL'leri kilitli olduğu için o silinemez ve
-    /// kalır; bu yüzden ancak arayüz açıldıktan (kütüphaneler yüklendikten) sonra çağrılmalıdır.
+    /// Eski sürümlerin çıkardığı klasörleri siler. Bu sürecin kullandığı klasöre dokunmaz: DLL'ler ancak gerektiğinde
+    /// yüklenir (HarfBuzz ilk metin çizildiğinde), tepside başlayan kopyada henüz kilitli olmadıkları için silinirlerdi
+    /// ve pencere açılınca uygulama DllNotFoundException ile çökerdi.
     /// </summary>
     public static void CleanupOldVersions()
     {
         var root = Path.Combine(SecureDir, "EngelsizDPI");
         if (!IsSecureDirSet() || !Directory.Exists(root)) return;
+        var current = CurrentExtractionDir(root);
+        if (current is null) return; // Hangisinin bizim olduğunu bilmeden hiçbirini silme.
         foreach (var dir in Directory.EnumerateDirectories(root))
         {
+            if (string.Equals(Path.TrimEndingDirectorySeparator(dir), current, StringComparison.OrdinalIgnoreCase)) continue;
             try { Directory.Delete(dir, recursive: true); }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
         }
+    }
+
+    /// <summary>Bu sürecin yüklediği bir DLL'in bulunduğu, <paramref name="root"/> altındaki ilk seviye klasör.</summary>
+    private static string? CurrentExtractionDir(string root)
+    {
+        var prefix = Path.TrimEndingDirectorySeparator(root) + Path.DirectorySeparatorChar;
+        try
+        {
+            foreach (ProcessModule m in Process.GetCurrentProcess().Modules)
+            {
+                var path = m.FileName;
+                if (string.IsNullOrEmpty(path) || !path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) continue;
+                var rest = path[prefix.Length..];
+                var sep = rest.IndexOf(Path.DirectorySeparatorChar);
+                if (sep > 0) return prefix + rest[..sep];
+            }
+        }
+        catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { }
+        return null;
     }
 
     private static bool IsSecureDirSet() =>

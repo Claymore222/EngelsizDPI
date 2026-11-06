@@ -25,6 +25,13 @@ public sealed class AppSettings
     public List<string>? DisabledPacks { get; set; }
     public List<string> CustomDomains { get; set; } = [];
     public bool DnsRedirect { get; set; } = true;
+
+    /// <summary>
+    /// Klasik GoodbyeDPI davranışı: site listesi (--blacklist) verilmez, yöntem bütün bağlantılara uygulanır.
+    /// Listede olmayan bir alan adı (ör. yeni bir CDN) yüzünden görseller gelmiyorsa işe yarar; bazı sitelerde
+    /// gereksiz parçalama yapacağı için varsayılan kapalıdır.
+    /// </summary>
+    public bool AllSites { get; set; }
     public bool ConnectOnLaunch { get; set; } = true;
     public bool AutoUpdate { get; set; } = true;
 
@@ -76,6 +83,10 @@ public sealed class AppSettings
             .Concat(CustomDomains.Where(SitePacks.IsValidDomain)) // Elle düzenlenmiş ayar dosyasına karşı
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
+
+    public IReadOnlyList<string> BuildPinList(IEnumerable<SitePack> catalog) =>
+        catalog.Where(IsPackEnabled).SelectMany(p => p.Pin ?? []).Where(SitePacks.IsValidDomain)
+            .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 }
 
 public static class AppPaths

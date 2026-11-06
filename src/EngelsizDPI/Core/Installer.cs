@@ -161,6 +161,7 @@ public static partial class Installer
     {
         Log.Write("Kaldırılıyor");
         TryRun(AutoStart.RemoveAll);
+        TryRun(DnsPins.Remove);
         TryRun(() => File.Delete(StartMenuShortcut));
         TryRun(() => File.Delete(DesktopShortcut));
         TryRun(() => Registry.LocalMachine.DeleteSubKeyTree(UninstallKeyPath, throwOnMissingSubKey: false));

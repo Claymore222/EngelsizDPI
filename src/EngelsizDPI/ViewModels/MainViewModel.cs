@@ -77,6 +77,7 @@ public sealed partial class MainViewModel : ObservableObject
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private BypassProfile _selectedProfile;
     [ObservableProperty] private bool _dnsRedirect;
+    [ObservableProperty] private bool _allSites;
     [ObservableProperty] private bool _connectOnLaunch;
     [ObservableProperty] private bool _startWithWindows;
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasConflict))] private string? _conflictText;
@@ -139,6 +140,7 @@ public sealed partial class MainViewModel : ObservableObject
 
         _selectedProfile = Core.Profiles.ById(settings.ProfileId);
         _dnsRedirect = settings.DnsRedirect;
+        _allSites = settings.AllSites;
         _connectOnLaunch = settings.ConnectOnLaunch;
         _startWithWindows = SafeAutoStartState();
         _theme = AppTheme.Normalize(settings.Theme);
@@ -401,6 +403,13 @@ public sealed partial class MainViewModel : ObservableObject
         SaveAndReconnect();
     }
 
+    partial void OnAllSitesChanged(bool value)
+    {
+        if (_loading) return;
+        _settings.AllSites = value;
+        SaveAndReconnect();
+    }
+
     partial void OnConnectOnLaunchChanged(bool value)
     {
         if (_loading) return;
@@ -437,6 +446,7 @@ public sealed partial class MainViewModel : ObservableObject
         try
         {
             await _engine.StopAsync();
+            DnsPins.Remove();
             SetOff();
         }
         finally
@@ -581,6 +591,9 @@ public sealed partial class MainViewModel : ObservableObject
                 return;
             }
 
+            // CDN adresleri değişebilir; onarılan adlar her denetimde yeniden çözülür.
+            await DnsPins.ApplyAsync(_settings.BuildPinList(SitePacks.All));
+
             var wasOpen = ActivePacks().Where(p => p.Status == PackStatus.Open).ToList();
             if (wasOpen.Count == 0) return;
             var results = await ConnectivityTester.TestPacksAsync(wasOpen.Select(p => p.Pack));
@@ -678,9 +691,10 @@ public sealed partial class MainViewModel : ObservableObject
     private async Task<int> ConnectCoreAsync(BypassProfile profile, string? busyText = null)
     {
         var hosts = _settings.BuildHostList(SitePacks.All);
-        if (hosts.Count == 0)
+        if (hosts.Count == 0 && !AllSites)
         {
             await _engine!.StopAsync();
+            DnsPins.Remove();
             SetOff();
             StatusDetail = "En az bir site açın veya ekleyin.";
             return 0;
@@ -696,8 +710,10 @@ public sealed partial class MainViewModel : ObservableObject
         try
         {
             var secureDns = await UseSecureDnsAsync();
-            await _engine!.StartAsync(new EngineOptions(profile, hosts, secureDns));
+            // Tüm siteler modunda boş liste verilir; motor --blacklist eklemez ve yöntem her bağlantıya uygulanır.
+            await _engine!.StartAsync(new EngineOptions(profile, AllSites ? [] : hosts, secureDns));
             _secureDnsActive = secureDns;
+            await DnsPins.ApplyAsync(_settings.BuildPinList(SitePacks.All));
 
             if (busyText is null) StatusDetail = "Siteler test ediliyor";
             var results = await ConnectivityTester.TestPacksAsync(active.Select(p => p.Pack));
